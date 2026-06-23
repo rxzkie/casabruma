@@ -25,30 +25,69 @@ export type Payment = {
   updated_at?: string;
 };
 
-export type CheckoutProItem = {
+export type MercadoPagoTestCard = {
+  number: string;
+  cvv: string;
+  expiration: string;
+  holder_name: string;
+  identification_type: string;
+  identification_number: string;
+  payment_method_id: string;
+};
+
+export const MP_TEST_BUYER_EMAIL = "test@testuser.com";
+
+export type MercadoPagoConfig = {
+  integration: string;
+  payment_flow: string;
+  public_key: string;
+  sandbox: boolean;
+  mode: "test" | "production";
+  country: string;
+  currency: string;
+  sdk_url: string;
+  endpoints: {
+    pay: string;
+    status: string;
+  };
+  test_mode?: boolean;
+  test_card?: MercadoPagoTestCard;
+};
+
+export type CardPaymentItem = {
   id: string;
   title: string;
   quantity: number;
   unit_price: number;
-  description?: string;
-  picture_url?: string;
   category_id?: string;
-  currency_id?: string;
 };
 
-export type CheckoutProBody = {
-  items: CheckoutProItem[];
-  payer: CheckoutPayer;
-  shipping: CheckoutShipping;
+export type CardPaymentBody = {
+  amount: number;
+  token: string;
+  payment_method_id: string;
+  installments: number;
+  issuer_id?: number;
+  description: string;
   external_reference: string;
-  statement_descriptor?: string;
+  test_mode?: boolean;
+  items?: CardPaymentItem[];
+  payer: {
+    email: string;
+    name?: string;
+    surname?: string;
+    phone?: string;
+    identification_type?: string;
+    identification_number?: string;
+  };
+  shipping?: CheckoutShipping;
 };
 
-export type CheckoutProResponse = {
-  preference_id: string;
-  checkout_url: string;
+export type CardPaymentResponse = {
+  payment_id: number;
+  status: "approved" | "pending" | "rejected";
+  status_detail: string;
   external_reference: string;
-  sandbox: boolean;
 };
 
 export type CheckoutPayer = {
