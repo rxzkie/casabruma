@@ -1,9 +1,12 @@
 import { API_URL } from "@/lib/config";
+import type { CartItem } from "@/types/cart";
 import type {
   CardPaymentBody,
   CardPaymentItem,
   CardPaymentResponse,
   CheckoutData,
+  CheckoutProBody,
+  CheckoutProResponse,
   MercadoPagoConfig,
   Payment,
 } from "@/types/payment";
@@ -74,6 +77,63 @@ export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> 
   } catch {
     return null;
   }
+}
+
+export function buildCheckoutProBody(
+  checkout: CheckoutData,
+  items: CartItem[],
+  externalReference: string,
+): CheckoutProBody {
+  return {
+    items: items.map((item) => ({
+      id: item.id,
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: item.price,
+      picture_url: item.image_url || undefined,
+      currency_id: "CLP",
+    })),
+    payer: {
+      name: checkout.payer.name.trim(),
+      surname: checkout.payer.surname.trim(),
+      email: checkout.payer.email.trim(),
+      ...(checkout.payer.phone?.trim()
+        ? { phone: normalizeChilePhone(checkout.payer.phone) }
+        : {}),
+    },
+    shipping: {
+      street: checkout.shipping.street.trim(),
+      number: checkout.shipping.number.trim(),
+      city: checkout.shipping.city.trim(),
+      region: checkout.shipping.region.trim(),
+      country: checkout.shipping.country.trim() || "CL",
+      ...(checkout.shipping.apartment?.trim()
+        ? { apartment: checkout.shipping.apartment.trim() }
+        : {}),
+      ...(checkout.shipping.postal_code?.trim()
+        ? { postal_code: checkout.shipping.postal_code.trim() }
+        : {}),
+    },
+    external_reference: externalReference,
+    statement_descriptor: "CASA BRUMA",
+  };
+}
+
+export async function createCheckoutPro(
+  body: CheckoutProBody,
+): Promise<CheckoutProResponse> {
+  const res = await fetch(`${API_URL}/mercadopago/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err));
+  }
+
+  return res.json();
 }
 
 export async function payWithCard(

@@ -88,6 +88,32 @@ export type CardPaymentResponse = {
   external_reference: string;
 };
 
+export type CheckoutProItem = {
+  id: string;
+  title: string;
+  quantity: number;
+  unit_price: number;
+  description?: string;
+  picture_url?: string;
+  category_id?: string;
+  currency_id?: string;
+};
+
+export type CheckoutProBody = {
+  items: CheckoutProItem[];
+  payer: CheckoutPayer;
+  shipping: CheckoutShipping;
+  external_reference: string;
+  statement_descriptor?: string;
+};
+
+export type CheckoutProResponse = {
+  preference_id: string;
+  checkout_url: string;
+  external_reference: string;
+  sandbox: boolean;
+};
+
 export type CheckoutPayer = {
   name: string;
   surname: string;
