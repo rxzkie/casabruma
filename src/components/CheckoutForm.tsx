@@ -189,8 +189,9 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
       </div>
 
       <p className="text-xs leading-relaxed text-bruma-deep/55">
-        Serás redirigido a Mercado Pago para pagar con tarjeta como invitado, sin
-        necesidad de cuenta.
+        Serás redirigido a Mercado Pago. Elige{" "}
+        <strong>Tarjeta de crédito o débito</strong> para pagar como invitado, sin
+        crear cuenta.
       </p>
 
       {error && <p className="text-center text-xs text-red-500">{error}</p>}
