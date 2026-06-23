@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import {
+  createCheckout,
   getSavedCheckout,
-  normalizeChilePhone,
+  redirectToCheckout,
   saveCheckout,
   validateCheckout,
 } from "@/lib/checkout";
@@ -24,9 +24,9 @@ type CheckoutFormProps = {
 };
 
 export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
-  const { total } = useCart();
-  const router = useRouter();
+  const { items, total } = useCart();
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
     }));
   }
 
-  function handleContinue(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -61,14 +61,20 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
       return;
     }
 
-    const phone = normalizeChilePhone(form.payer.phone);
-    saveCheckout({ ...form, payer: { ...form.payer, phone } });
-    onContinue?.();
-    router.push("/checkout");
+    setLoading(true);
+    try {
+      saveCheckout(form);
+      const data = await createCheckout(items, form, window.location.origin);
+      onContinue?.();
+      redirectToCheckout(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al procesar el pago");
+      setLoading(false);
+    }
   }
 
   return (
-    <form onSubmit={handleContinue} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <p className="mb-2 text-xs uppercase tracking-widest text-bruma-mist">
           Datos personales
@@ -101,10 +107,9 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         />
         <input
           type="tel"
-          value={form.payer.phone}
+          value={form.payer.phone ?? ""}
           onChange={(e) => updatePayer("phone", e.target.value)}
-          placeholder="Teléfono (+56912345678)"
-          required
+          placeholder="Teléfono (+56912345678) opcional"
           className={`${inputClass} mt-2`}
         />
       </div>
@@ -158,22 +163,16 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
             </option>
           ))}
         </select>
-        <input
-          type="text"
-          value={form.shipping.postal_code}
-          onChange={(e) => updateShipping("postal_code", e.target.value)}
-          placeholder="Código postal (opcional)"
-          className={`${inputClass} mt-2`}
-        />
       </div>
 
       {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
       <button
         type="submit"
-        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85"
+        disabled={loading}
+        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
       >
-        Continuar al pago · {formatCLP(total)}
+        {loading ? "Redirigiendo..." : `Pagar ${formatCLP(total)}`}
       </button>
     </form>
   );
