@@ -1,21 +1,31 @@
 import { API_URL } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
-import type { Payment, PreferenceResponse } from "@/types/payment";
+import type {
+  CheckoutData,
+  Payment,
+  PreferenceResponse,
+} from "@/types/payment";
 
-const EMAIL_KEY = "casa-bruma-email";
+const CHECKOUT_KEY = "casa-bruma-checkout";
 const ORDER_KEY = "lastOrderRef";
 
 export function createOrderReference() {
   return `orden-${Date.now()}`;
 }
 
-export function getSavedEmail(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(EMAIL_KEY) ?? "";
+export function getSavedCheckout(): CheckoutData | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CHECKOUT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CheckoutData;
+  } catch {
+    return null;
+  }
 }
 
-export function saveEmail(email: string) {
-  localStorage.setItem(EMAIL_KEY, email);
+export function saveCheckout(data: CheckoutData) {
+  localStorage.setItem(CHECKOUT_KEY, JSON.stringify(data));
 }
 
 export function saveOrderReference(ref: string) {
@@ -24,10 +34,24 @@ export function saveOrderReference(ref: string) {
 
 export async function createCheckoutPreference(
   items: CartItem[],
-  email: string,
+  checkout: CheckoutData,
   origin: string,
 ): Promise<PreferenceResponse & { external_reference: string }> {
   const orderRef = createOrderReference();
+
+  const shipping = {
+    street: checkout.shipping.street.trim(),
+    number: checkout.shipping.number.trim(),
+    city: checkout.shipping.city.trim(),
+    region: checkout.shipping.region.trim(),
+    country: checkout.shipping.country.trim() || "CL",
+    ...(checkout.shipping.apartment?.trim()
+      ? { apartment: checkout.shipping.apartment.trim() }
+      : {}),
+    ...(checkout.shipping.postal_code?.trim()
+      ? { postal_code: checkout.shipping.postal_code.trim() }
+      : {}),
+  };
 
   const res = await fetch(`${API_URL}/mercadopago/preference`, {
     method: "POST",
@@ -41,7 +65,13 @@ export async function createCheckoutPreference(
         unit_price: item.price,
         currency_id: "CLP",
       })),
-      payer: { email },
+      payer: {
+        name: checkout.payer.name.trim(),
+        surname: checkout.payer.surname.trim(),
+        email: checkout.payer.email.trim(),
+        phone: checkout.payer.phone.trim(),
+      },
+      shipping,
       external_reference: orderRef,
       back_urls: {
         success: `${origin}/pago-exitoso?ref=${orderRef}`,
@@ -61,7 +91,7 @@ export async function createCheckoutPreference(
   }
 
   const data: PreferenceResponse = await res.json();
-  saveEmail(email);
+  saveCheckout(checkout);
   saveOrderReference(orderRef);
   return { ...data, external_reference: orderRef };
 }
@@ -81,4 +111,21 @@ export function redirectToMercadoPago(data: PreferenceResponse) {
   const url = data.init_point || data.sandbox_init_point;
   if (!url) throw new Error("No se recibió URL de pago");
   window.location.href = url;
+}
+
+export function validateCheckout(checkout: CheckoutData): string | null {
+  const { payer, shipping } = checkout;
+
+  if (!payer.name.trim()) return "Ingresa tu nombre";
+  if (!payer.surname.trim()) return "Ingresa tu apellido";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payer.email.trim()))
+    return "Ingresa un email válido";
+  if (!/^\+?[\d\s-]{8,}$/.test(payer.phone.trim()))
+    return "Ingresa un teléfono válido";
+  if (!shipping.street.trim()) return "Ingresa la calle";
+  if (!shipping.number.trim()) return "Ingresa el número";
+  if (!shipping.city.trim()) return "Ingresa la comuna o ciudad";
+  if (!shipping.region.trim()) return "Selecciona la región";
+
+  return null;
 }

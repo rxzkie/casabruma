@@ -75,7 +75,7 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
       {!loading && payment && (
         <div className="mt-8 w-full rounded-2xl border border-bruma-sand/80 bg-white p-6 text-left">
           <p className="text-xs uppercase tracking-widest text-bruma-mist">
-            Detalle
+            Detalle del pedido
           </p>
           <p className="mt-2 text-sm text-bruma-deep">
             Orden: {payment.external_reference}
@@ -86,10 +86,56 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
           <p className="mt-1 text-sm capitalize text-bruma-deep/70">
             Estado: {payment.status}
           </p>
-          {payment.payer_email && (
+          {payment.description && (
             <p className="mt-1 text-sm text-bruma-deep/70">
-              Email: {payment.payer_email}
+              Producto: {payment.description}
             </p>
+          )}
+
+          {(payment.payer_name || payment.payer_email) && (
+            <div className="mt-4 border-t border-bruma-sand/50 pt-4">
+              <p className="text-xs uppercase tracking-widest text-bruma-mist">
+                Cliente
+              </p>
+              {payment.payer_name && (
+                <p className="mt-2 text-sm text-bruma-deep">
+                  {payment.payer_name}
+                  {payment.payer_surname ? ` ${payment.payer_surname}` : ""}
+                </p>
+              )}
+              {payment.payer_email && (
+                <p className="mt-1 text-sm text-bruma-deep/70">
+                  {payment.payer_email}
+                </p>
+              )}
+              {payment.payer_phone && (
+                <p className="mt-1 text-sm text-bruma-deep/70">
+                  {payment.payer_phone}
+                </p>
+              )}
+            </div>
+          )}
+
+          {payment.shipping_street && (
+            <div className="mt-4 border-t border-bruma-sand/50 pt-4">
+              <p className="text-xs uppercase tracking-widest text-bruma-mist">
+                Envío
+              </p>
+              <p className="mt-2 text-sm text-bruma-deep">
+                {payment.shipping_street} {payment.shipping_number}
+                {payment.shipping_apartment
+                  ? `, ${payment.shipping_apartment}`
+                  : ""}
+              </p>
+              <p className="mt-1 text-sm text-bruma-deep/70">
+                {payment.shipping_city}, {payment.shipping_region}
+              </p>
+              {payment.shipping_postal_code && (
+                <p className="mt-1 text-sm text-bruma-deep/70">
+                  CP: {payment.shipping_postal_code}
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}
