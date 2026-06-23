@@ -28,6 +28,7 @@ type MercadoPagoCardFormConfig = {
   };
   callbacks: {
     onFormMounted?: (error: Error | null) => void;
+    onFetching?: (resource: string) => void;
     onSubmit: (event: Event) => void;
   };
 };

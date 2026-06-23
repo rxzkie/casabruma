@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useMercadoPago } from "@/context/MercadoPagoContext";
 import {
@@ -12,12 +12,14 @@ import {
   saveOrderReference,
 } from "@/lib/checkout";
 import { formatCLP } from "@/lib/format";
-import type { CheckoutData } from "@/types/payment";
+import type { CheckoutData, MercadoPagoTestCard } from "@/types/payment";
+
+const FORM_ID = "bruma-card-payment";
 
 const fieldClass =
   "w-full rounded-xl border border-bruma-sand bg-white px-3 py-2.5 text-sm text-bruma-deep outline-none transition focus:border-bruma-rose";
 
-const iframeClass = "h-10 w-full rounded-xl border border-bruma-sand bg-white";
+const iframeClass = "h-11 w-full rounded-xl border border-bruma-sand bg-white";
 
 type CardPaymentFormProps = {
   checkout: CheckoutData;
@@ -29,22 +31,28 @@ function formatCardNumber(number: string) {
   return number.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
 }
 
+function getTestCardHint(testCard?: MercadoPagoTestCard) {
+  if (!testCard) return null;
+  const expiration =
+    testCard.expiration === "11/25" ? "11/30" : testCard.expiration;
+  return { ...testCard, expiration };
+}
+
 export default function CardPaymentForm({
   checkout,
   onBack,
   onComplete,
 }: CardPaymentFormProps) {
-  const formId = useId().replace(/:/g, "");
   const { items, total, clearCart } = useCart();
   const { config, cardPublicKey, ready, loading: configLoading } =
     useMercadoPago();
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formMounted, setFormMounted] = useState(false);
   const cardFormRef = useRef<MercadoPagoCardForm | null>(null);
-  const initialized = useRef(false);
 
-  const testCard = config?.test_card;
+  const testCard = getTestCardHint(config?.test_card);
   const invalidKey = !isValidCardPublicKey(cardPublicKey);
   const payerEmail = checkout.payer.email.trim();
   const cardholderName = testCard
@@ -52,143 +60,159 @@ export default function CardPaymentForm({
     : `${checkout.payer.name} ${checkout.payer.surname}`.trim();
 
   useEffect(() => {
-    initialized.current = false;
-    cardFormRef.current = null;
-  }, [formId, cardPublicKey, total]);
+    if (!ready || invalidKey || items.length === 0) return;
 
-  useEffect(() => {
-    if (!ready || initialized.current || items.length === 0) return;
+    let cancelled = false;
+    setFormMounted(false);
+    setError("");
 
-    const mp = new window.MercadoPago(cardPublicKey, { locale: "es-CL" });
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      if (!document.getElementById(FORM_ID)) return;
 
-    cardFormRef.current = mp.cardForm({
-      amount: String(total),
-      iframe: true,
-      form: {
-        id: formId,
-        cardNumber: {
-          id: `${formId}__cardNumber`,
-          placeholder: "Número de tarjeta",
-        },
-        expirationDate: {
-          id: `${formId}__expirationDate`,
-          placeholder: "MM/AA",
-        },
-        securityCode: {
-          id: `${formId}__securityCode`,
-          placeholder: "CVV",
-        },
-        cardholderName: {
-          id: `${formId}__cardholderName`,
-          placeholder: "Nombre en la tarjeta",
-        },
-        issuer: {
-          id: `${formId}__issuer`,
-          placeholder: "Banco emisor",
-        },
-        installments: {
-          id: `${formId}__installments`,
-          placeholder: "Cuotas",
-        },
-        identificationType: {
-          id: `${formId}__identificationType`,
-          placeholder: "Tipo de documento",
-        },
-        identificationNumber: {
-          id: `${formId}__identificationNumber`,
-          placeholder: "Documento",
-        },
-        cardholderEmail: {
-          id: `${formId}__cardholderEmail`,
-          placeholder: "Email",
-        },
-      },
-      callbacks: {
-        onFormMounted: (err) => {
-          if (err) setError("Error al cargar el formulario de pago");
-        },
-        onSubmit: async (event) => {
-          event.preventDefault();
-          setLoading(true);
-          setError("");
+      const mp = new window.MercadoPago(cardPublicKey, { locale: "es-CL" });
 
-          try {
-            const data = cardFormRef.current?.getCardFormData();
-            if (!data?.token) throw new Error("No se pudo procesar la tarjeta");
-
-            const ref = createOrderReference();
-            const description = items
-              .map((i) => `${i.name} x${i.quantity}`)
-              .join(", ")
-              .slice(0, 200);
-
-            const body = buildCardPaymentBody(checkout, {
-              amount: total,
-              token: data.token,
-              payment_method_id: data.paymentMethodId,
-              installments: Number(data.installments) || 1,
-              issuer_id: data.issuerId ? Number(data.issuerId) : undefined,
-              description,
-              external_reference: ref,
-              identification_type:
-                data.identificationType || testCard?.identification_type,
-              identification_number:
-                data.identificationNumber || testCard?.identification_number,
-            });
-
-            const result = await payWithCard(body);
-            const orderRef = result.external_reference ?? ref;
-            saveOrderReference(orderRef);
-            onComplete?.();
-
-            if (result.status === "approved") {
-              clearCart();
-              router.push(`/pago/exito?ref=${orderRef}`);
-            } else if (result.status === "pending") {
-              router.push(`/pago/pendiente?ref=${orderRef}`);
-            } else {
-              router.push(`/pago/error?ref=${orderRef}`);
+      cardFormRef.current = mp.cardForm({
+        amount: String(total),
+        iframe: true,
+        form: {
+          id: FORM_ID,
+          cardNumber: {
+            id: `${FORM_ID}__cardNumber`,
+            placeholder: "Número de tarjeta",
+          },
+          expirationDate: {
+            id: `${FORM_ID}__expirationDate`,
+            placeholder: "MM/AA",
+          },
+          securityCode: {
+            id: `${FORM_ID}__securityCode`,
+            placeholder: "CVV",
+          },
+          cardholderName: {
+            id: `${FORM_ID}__cardholderName`,
+            placeholder: "Nombre en la tarjeta",
+          },
+          issuer: {
+            id: `${FORM_ID}__issuer`,
+            placeholder: "Banco emisor",
+          },
+          installments: {
+            id: `${FORM_ID}__installments`,
+            placeholder: "Cuotas",
+          },
+          identificationType: {
+            id: `${FORM_ID}__identificationType`,
+            placeholder: "Tipo de documento",
+          },
+          identificationNumber: {
+            id: `${FORM_ID}__identificationNumber`,
+            placeholder: "Documento",
+          },
+          cardholderEmail: {
+            id: `${FORM_ID}__cardholderEmail`,
+            placeholder: "Email",
+          },
+        },
+        callbacks: {
+          onFormMounted: (err) => {
+            if (cancelled) return;
+            if (err) {
+              setFormMounted(false);
+              setError("Error al cargar el formulario de pago");
+              return;
             }
-          } catch (err) {
-            setError(
-              err instanceof Error ? err.message : "Error al procesar el pago",
-            );
-            setLoading(false);
-          }
+            setFormMounted(true);
+
+            const emailInput = document.getElementById(
+              `${FORM_ID}__cardholderEmail`,
+            ) as HTMLInputElement | null;
+            if (emailInput) emailInput.value = payerEmail;
+
+            const nameInput = document.getElementById(
+              `${FORM_ID}__cardholderName`,
+            ) as HTMLInputElement | null;
+            if (nameInput) nameInput.value = cardholderName;
+
+            const idNumberInput = document.getElementById(
+              `${FORM_ID}__identificationNumber`,
+            ) as HTMLInputElement | null;
+            if (idNumberInput && testCard?.identification_number) {
+              idNumberInput.value = testCard.identification_number;
+            }
+          },
+          onSubmit: async (event) => {
+            event.preventDefault();
+            setLoading(true);
+            setError("");
+
+            try {
+              const data = cardFormRef.current?.getCardFormData();
+              if (!data?.token) {
+                throw new Error(
+                  "No se pudo tokenizar la tarjeta. Revisa número, CVV, vencimiento 11/30 y titular APRO.",
+                );
+              }
+
+              const ref = createOrderReference();
+              const description = items
+                .map((i) => `${i.name} x${i.quantity}`)
+                .join(", ")
+                .slice(0, 200);
+
+              const body = buildCardPaymentBody(checkout, {
+                amount: total,
+                token: data.token,
+                payment_method_id: data.paymentMethodId,
+                installments: Number(data.installments) || 1,
+                issuer_id: data.issuerId ? Number(data.issuerId) : undefined,
+                description,
+                external_reference: ref,
+                identification_type:
+                  data.identificationType || testCard?.identification_type,
+                identification_number:
+                  data.identificationNumber || testCard?.identification_number,
+              });
+
+              const result = await payWithCard(body);
+              const orderRef = result.external_reference ?? ref;
+              saveOrderReference(orderRef);
+              onComplete?.();
+
+              if (result.status === "approved") {
+                clearCart();
+                router.push(`/pago/exito?ref=${orderRef}`);
+              } else if (result.status === "pending") {
+                router.push(`/pago/pendiente?ref=${orderRef}`);
+              } else {
+                router.push(`/pago/error?ref=${orderRef}`);
+              }
+            } catch (err) {
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : "Error al procesar el pago",
+              );
+              setLoading(false);
+            }
+          },
         },
-      },
-    });
-
-    const emailInput = document.getElementById(
-      `${formId}__cardholderEmail`,
-    ) as HTMLInputElement | null;
-    if (emailInput) emailInput.value = payerEmail;
-
-    const nameInput = document.getElementById(
-      `${formId}__cardholderName`,
-    ) as HTMLInputElement | null;
-    if (nameInput) nameInput.value = cardholderName;
-
-    const idNumberInput = document.getElementById(
-      `${formId}__identificationNumber`,
-    ) as HTMLInputElement | null;
-    if (idNumberInput && testCard?.identification_number) {
-      idNumberInput.value = testCard.identification_number;
-    }
-
-    initialized.current = true;
+      });
+    }, 150);
 
     return () => {
-      initialized.current = false;
+      cancelled = true;
+      window.clearTimeout(timer);
       cardFormRef.current = null;
+      setFormMounted(false);
     };
   }, [
     ready,
+    invalidKey,
     cardPublicKey,
     total,
     items,
     checkout,
-    formId,
     router,
     clearCart,
     onComplete,
@@ -217,28 +241,27 @@ export default function CardPaymentForm({
 
       {invalidKey && (
         <p className="text-center text-xs text-red-500">
-          No se pudo cargar public_key APP_USR. Revisa GET /mercadopago/config en
-          el backend.
+          No se pudo cargar public_key APP_USR. Revisa GET /mercadopago/config.
         </p>
       )}
 
-      <form id={formId} className="space-y-3">
+      <form id={FORM_ID} className="space-y-3">
         <div>
           <label className="mb-1 block text-xs text-bruma-mist">
             Número de tarjeta
           </label>
-          <div id={`${formId}__cardNumber`} className={iframeClass} />
+          <div id={`${FORM_ID}__cardNumber`} className={iframeClass} />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs text-bruma-mist">
               Vencimiento
             </label>
-            <div id={`${formId}__expirationDate`} className={iframeClass} />
+            <div id={`${FORM_ID}__expirationDate`} className={iframeClass} />
           </div>
           <div>
             <label className="mb-1 block text-xs text-bruma-mist">CVV</label>
-            <div id={`${formId}__securityCode`} className={iframeClass} />
+            <div id={`${FORM_ID}__securityCode`} className={iframeClass} />
           </div>
         </div>
         <div>
@@ -246,20 +269,31 @@ export default function CardPaymentForm({
             Nombre en la tarjeta
           </label>
           <input
-            id={`${formId}__cardholderName`}
+            id={`${FORM_ID}__cardholderName`}
             type="text"
+            defaultValue={cardholderName}
             className={fieldClass}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-bruma-mist">Email</label>
+          <input
+            id={`${FORM_ID}__cardholderEmail`}
+            type="email"
+            readOnly
+            defaultValue={payerEmail}
+            className={`${fieldClass} bg-bruma-sand/20`}
           />
         </div>
         <div>
           <label className="mb-1 block text-xs text-bruma-mist">
             Banco emisor
           </label>
-          <select id={`${formId}__issuer`} className={fieldClass} />
+          <select id={`${FORM_ID}__issuer`} className={fieldClass} />
         </div>
         <div>
           <label className="mb-1 block text-xs text-bruma-mist">Cuotas</label>
-          <select id={`${formId}__installments`} className={fieldClass} />
+          <select id={`${FORM_ID}__installments`} className={fieldClass} />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -267,7 +301,7 @@ export default function CardPaymentForm({
               Tipo de documento
             </label>
             <select
-              id={`${formId}__identificationType`}
+              id={`${FORM_ID}__identificationType`}
               className={fieldClass}
             />
           </div>
@@ -276,20 +310,22 @@ export default function CardPaymentForm({
               Documento
             </label>
             <input
-              id={`${formId}__identificationNumber`}
+              id={`${FORM_ID}__identificationNumber`}
               type="text"
+              defaultValue={testCard?.identification_number ?? ""}
               placeholder="123456789"
               className={fieldClass}
             />
           </div>
         </div>
-        <input
-          id={`${formId}__cardholderEmail`}
-          type="hidden"
-          defaultValue={payerEmail}
-        />
 
         {error && <p className="text-center text-xs text-red-500">{error}</p>}
+
+        {!formMounted && ready && !invalidKey && (
+          <p className="text-center text-xs text-bruma-mist">
+            Preparando formulario seguro...
+          </p>
+        )}
 
         <div className="flex gap-2 pt-1">
           {onBack && (
@@ -304,7 +340,7 @@ export default function CardPaymentForm({
           )}
           <button
             type="submit"
-            disabled={loading || !ready}
+            disabled={loading || !ready || !formMounted || invalidKey}
             className="flex min-h-[48px] flex-1 items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
           >
             {loading ? "Procesando..." : `Pagar ${formatCLP(total)}`}
