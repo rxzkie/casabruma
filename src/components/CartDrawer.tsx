@@ -143,7 +143,7 @@ export default function CartDrawer() {
                     {formatCLP(total)}
                   </span>
                 </div>
-                <CheckoutForm />
+                <CheckoutForm onContinue={closeCart} />
               </div>
             </div>
           </div>

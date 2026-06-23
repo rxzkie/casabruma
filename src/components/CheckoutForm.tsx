@@ -1,11 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import {
-  createCheckoutPreference,
   getSavedCheckout,
-  redirectToMercadoPago,
+  normalizeChilePhone,
+  saveCheckout,
   validateCheckout,
 } from "@/lib/checkout";
 import { formatCLP } from "@/lib/format";
@@ -18,10 +19,14 @@ import {
 const inputClass =
   "w-full rounded-xl border border-bruma-sand bg-white px-3 py-2.5 text-sm text-bruma-deep outline-none transition focus:border-bruma-rose";
 
-export default function CheckoutForm() {
-  const { items, total } = useCart();
+type CheckoutFormProps = {
+  onContinue?: () => void;
+};
+
+export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
+  const { total } = useCart();
+  const router = useRouter();
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -46,7 +51,7 @@ export default function CheckoutForm() {
     }));
   }
 
-  async function handleCheckout(e: React.FormEvent) {
+  function handleContinue(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -56,22 +61,14 @@ export default function CheckoutForm() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const data = await createCheckoutPreference(
-        items,
-        form,
-        window.location.origin,
-      );
-      await redirectToMercadoPago(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al procesar el pago");
-      setLoading(false);
-    }
+    const phone = normalizeChilePhone(form.payer.phone);
+    saveCheckout({ ...form, payer: { ...form.payer, phone } });
+    onContinue?.();
+    router.push("/checkout");
   }
 
   return (
-    <form onSubmit={handleCheckout} className="space-y-4">
+    <form onSubmit={handleContinue} className="space-y-4">
       <div>
         <p className="mb-2 text-xs uppercase tracking-widest text-bruma-mist">
           Datos personales
@@ -174,10 +171,9 @@ export default function CheckoutForm() {
 
       <button
         type="submit"
-        disabled={loading}
-        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
+        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85"
       >
-        {loading ? "Redirigiendo a Mercado Pago..." : `Pagar ${formatCLP(total)}`}
+        Continuar al pago · {formatCLP(total)}
       </button>
     </form>
   );
