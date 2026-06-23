@@ -33,6 +33,15 @@ type BrickFormData = {
   };
 };
 
+function normalizeBrickPayload(
+  payload: BrickFormData | { formData: BrickFormData },
+): BrickFormData {
+  if ("formData" in payload && payload.formData) {
+    return payload.formData;
+  }
+  return payload as BrickFormData;
+}
+
 export default function PaymentBrickForm({
   checkout,
   onBack,
@@ -103,10 +112,7 @@ export default function PaymentBrickForm({
             ) => {
               const currentCheckout = checkoutRef.current;
               const currentItems = itemsRef.current;
-              const data =
-                "formData" in payload && payload.formData
-                  ? payload.formData
-                  : payload;
+              const data = normalizeBrickPayload(payload);
 
               return new Promise<void>((resolve, reject) => {
                 (async () => {
