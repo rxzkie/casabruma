@@ -63,7 +63,7 @@ export default function CheckoutForm() {
         form,
         window.location.origin,
       );
-      redirectToMercadoPago(data);
+      await redirectToMercadoPago(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al procesar el pago");
       setLoading(false);
