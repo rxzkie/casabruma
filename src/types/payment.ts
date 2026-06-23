@@ -25,69 +25,6 @@ export type Payment = {
   updated_at?: string;
 };
 
-export type MercadoPagoTestCard = {
-  number: string;
-  cvv: string;
-  expiration: string;
-  holder_name: string;
-  identification_type: string;
-  identification_number: string;
-  payment_method_id: string;
-};
-
-export const MP_TEST_BUYER_EMAIL = "test@testuser.com";
-
-export type MercadoPagoConfig = {
-  public_key: string;
-  checkout_public_key?: string;
-  sandbox: boolean;
-  sandbox_checkout?: boolean;
-  card_mode?: "production" | "test";
-  mode?: "test" | "production";
-  country: string;
-  currency: string;
-  sdk_url?: string;
-  checkout_pro_url?: string;
-  test_card?: MercadoPagoTestCard;
-  test_buyer_email?: string;
-};
-
-export type CardPaymentItem = {
-  id: string;
-  title: string;
-  quantity: number;
-  unit_price: number;
-  category_id?: string;
-};
-
-export type CardPaymentBody = {
-  amount: number;
-  token: string;
-  payment_method_id: string;
-  installments: number;
-  issuer_id?: number;
-  description: string;
-  external_reference: string;
-  test_mode?: boolean;
-  items?: CardPaymentItem[];
-  payer: {
-    email: string;
-    name?: string;
-    surname?: string;
-    phone?: string;
-    identification_type?: string;
-    identification_number?: string;
-  };
-  shipping?: CheckoutShipping;
-};
-
-export type CardPaymentResponse = {
-  payment_id: number;
-  status: "approved" | "pending" | "rejected";
-  status_detail: string;
-  external_reference: string;
-};
-
 export type CheckoutProItem = {
   id: string;
   title: string;
