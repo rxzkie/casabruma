@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { getPaymentByReference } from "@/lib/checkout";
+import { formatCLP } from "@/lib/format";
 import { getRejectionMessage } from "@/lib/mp-errors";
 import type { Payment } from "@/types/payment";
 
