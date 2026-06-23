@@ -272,6 +272,7 @@ export default function CardPaymentForm({
   }, [
     ready,
     invalidKey,
+    credentialsOk,
     cardPublicKey,
     total,
     mpEmail,
