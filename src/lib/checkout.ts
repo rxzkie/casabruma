@@ -122,8 +122,12 @@ export async function createCheckoutPro(
 
   const data: CheckoutProResponse = await res.json();
 
-  if (!data.checkout_url?.trim()) {
+  const url = data.checkout_url?.trim() || "";
+  if (!url) {
     throw new Error("Mercado Pago no devolvió checkout_url");
+  }
+  if (url.includes("sandbox.mercadopago")) {
+    throw new Error("Checkout en modo prueba no permitido. Configura MP_SANDBOX=false en Render.");
   }
 
   return data;

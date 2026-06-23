@@ -28,12 +28,10 @@ export type Payment = {
 export type MercadoPagoConfig = {
   integration: string;
   payment_flow: string;
-  sandbox: boolean;
-  mode: "test" | "production";
+  mode: "production";
   country: string;
   currency: string;
   credentials_ok?: boolean;
-  credential_mode?: "test" | "production";
   application_id?: string | null;
   checkout_base_url?: string;
   endpoints: {
@@ -65,7 +63,6 @@ export type CheckoutProResponse = {
   preference_id: string;
   checkout_url: string;
   external_reference: string;
-  sandbox: boolean;
 };
 
 export type CheckoutPayer = {

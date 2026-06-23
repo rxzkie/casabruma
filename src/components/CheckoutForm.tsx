@@ -6,7 +6,6 @@ import {
   buildCheckoutProBody,
   createCheckoutPro,
   createOrderReference,
-  getMercadoPagoConfig,
   getSavedCheckout,
   saveCheckout,
   saveOrderReference,
@@ -31,14 +30,10 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sandbox, setSandbox] = useState(false);
 
   useEffect(() => {
     const saved = getSavedCheckout();
     if (saved) setForm(saved);
-    getMercadoPagoConfig().then((cfg) => {
-      if (cfg) setSandbox(cfg.sandbox);
-    });
   }, []);
 
   function updatePayer(field: keyof CheckoutData["payer"], value: string) {
@@ -196,12 +191,6 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         Serás redirigido a Mercado Pago para pagar con tarjeta, transferencia u
         otros medios disponibles.
       </p>
-
-      {sandbox && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Modo prueba activo — usarás el checkout sandbox de Mercado Pago.
-        </p>
-      )}
 
       {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
