@@ -9,11 +9,11 @@ import {
   createOrderReference,
   isValidCardPublicKey,
   payWithCard,
+  resolvePayerEmail,
   saveOrderReference,
 } from "@/lib/checkout";
 import { getRejectionMessage } from "@/lib/mp-errors";
 import { formatCLP } from "@/lib/format";
-import { MP_TEST_BUYER_EMAIL } from "@/types/payment";
 import type { CheckoutData, MercadoPagoTestCard } from "@/types/payment";
 
 const FORM_ID = "bruma-card-payment";
@@ -73,17 +73,18 @@ export default function CardPaymentForm({
   );
   const isTestMode = Boolean(config?.sandbox || config?.test_mode || testCard);
   const invalidKey = !isValidCardPublicKey(cardPublicKey, config?.sandbox);
-  const credentialsOk = config?.credentials_ok !== false;
-  const payerEmail = checkout.payer.email.trim();
-  const mpEmail = isTestMode ? MP_TEST_BUYER_EMAIL : payerEmail;
+  const credentialsOk = config?.credentials_ok === true;
+  const mpEmail = resolvePayerEmail(checkout, isTestMode, config);
   const cardholderName = isTestMode
     ? testCard?.holder_name ?? "APRO"
     : `${checkout.payer.name} ${checkout.payer.surname}`.trim();
 
   const testCardRef = useRef(testCard);
   const isTestModeRef = useRef(isTestMode);
+  const configRef = useRef(config);
   testCardRef.current = testCard;
   isTestModeRef.current = isTestMode;
+  configRef.current = config;
 
   useEffect(() => {
     refreshConfig();
@@ -223,6 +224,11 @@ export default function CardPaymentForm({
                 description,
                 external_reference: ref,
                 testMode: useTestMode,
+                payerEmail: resolvePayerEmail(
+                  currentCheckout,
+                  useTestMode,
+                  configRef.current,
+                ),
                 identification_type: useTestMode
                   ? "Otro"
                   : data.identificationType,
@@ -296,7 +302,7 @@ export default function CardPaymentForm({
           Modo prueba · Tarjeta:{" "}
           {formatCardNumber(testCard?.number ?? "4168818844447115")} · CVV{" "}
           {testCard?.cvv ?? "123"} · vence {testCard?.expiration ?? "11/30"} ·
-          titular APRO · doc. Otro / 123456789 · email {MP_TEST_BUYER_EMAIL}
+          titular APRO · doc. Otro / 123456789 · email del checkout
         </div>
       )}
 
@@ -392,7 +398,7 @@ export default function CardPaymentForm({
 
         {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
-        {!formMounted && ready && !invalidKey && (
+        {!formMounted && ready && !invalidKey && credentialsOk && (
           <p className="text-center text-xs text-bruma-mist">
             Preparando formulario seguro...
           </p>

@@ -35,8 +35,6 @@ export type MercadoPagoTestCard = {
   payment_method_id: string;
 };
 
-export const MP_TEST_BUYER_EMAIL = "test@testuser.com";
-
 export type MercadoPagoConfig = {
   integration: string;
   payment_flow: string;
@@ -55,7 +53,9 @@ export type MercadoPagoConfig = {
     status: string;
   };
   test_mode?: boolean;
+  test_buyer_email?: string;
   test_card?: MercadoPagoTestCard;
+  note?: string;
 };
 
 export type CardPaymentItem = {

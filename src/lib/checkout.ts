@@ -8,7 +8,6 @@ import type {
   MercadoPagoConfig,
   Payment,
 } from "@/types/payment";
-import { MP_TEST_BUYER_EMAIL } from "@/types/payment";
 
 const CHECKOUT_KEY = "casa-bruma-checkout";
 const ORDER_KEY = "lastOrderRef";
@@ -106,6 +105,19 @@ export async function getPaymentByReference(
   return res.json();
 }
 
+export function resolvePayerEmail(
+  checkout: CheckoutData,
+  testMode: boolean,
+  config?: MercadoPagoConfig | null,
+) {
+  const buyerEmail = checkout.payer.email.trim();
+  if (!testMode) return buyerEmail;
+  if (config?.credential_mode === "test") {
+    return config.test_buyer_email?.trim() || "test@testuser.com";
+  }
+  return buyerEmail;
+}
+
 export function buildCardPaymentBody(
   checkout: CheckoutData,
   payment: {
@@ -119,6 +131,7 @@ export function buildCardPaymentBody(
     identification_type?: string;
     identification_number?: string;
     testMode?: boolean;
+    payerEmail?: string;
     items?: CardPaymentItem[];
   },
 ): CardPaymentBody {
@@ -127,6 +140,7 @@ export function buildCardPaymentBody(
   const idNumber = testMode
     ? "123456789"
     : payment.identification_number || "123456789";
+  const payerEmail = payment.payerEmail ?? checkout.payer.email.trim();
 
   const body: CardPaymentBody = {
     amount: payment.amount,
@@ -138,7 +152,7 @@ export function buildCardPaymentBody(
     ...(testMode ? { test_mode: true } : {}),
     ...(payment.items?.length ? { items: payment.items } : {}),
     payer: {
-      email: testMode ? MP_TEST_BUYER_EMAIL : checkout.payer.email.trim(),
+      email: payerEmail,
       name: testMode ? "APRO" : checkout.payer.name.trim(),
       surname: testMode ? "TEST" : checkout.payer.surname.trim(),
       identification_type: idType,

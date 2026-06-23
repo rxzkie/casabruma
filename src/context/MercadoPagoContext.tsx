@@ -74,7 +74,7 @@ export function MercadoPagoProvider({ children }: { children: ReactNode }) {
   const cardPublicKey = useMemo(() => getCardPublicKey(config), [config]);
   const sandbox = Boolean(config?.sandbox);
   const validKey = isValidCardPublicKey(cardPublicKey, sandbox);
-  const credentialsOk = config?.credentials_ok !== false;
+  const credentialsOk = config?.credentials_ok === true;
   const sdkUrl = config?.sdk_url ?? "https://sdk.mercadopago.com/js/v2";
   const ready = !loading && validKey && credentialsOk && sdkReady;
 
