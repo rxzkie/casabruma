@@ -263,7 +263,7 @@ export default function CardPaymentForm({
 
       {invalidKey && (
         <p className="text-center text-xs text-red-500">
-          No se pudo cargar public_key APP_USR. Revisa GET /mercadopago/config.
+          No se pudo cargar la public_key de tarjetas. Revisa GET /mercadopago/config.
         </p>
       )}
 
