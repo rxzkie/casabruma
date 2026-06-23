@@ -161,6 +161,19 @@ export default function CardPaymentForm({
             if (idNumberInput && testCardRef.current?.identification_number) {
               idNumberInput.value = testCardRef.current.identification_number;
             }
+
+            const idTypeSelect = document.getElementById(
+              `${FORM_ID}__identificationType`,
+            ) as HTMLSelectElement | null;
+            if (idTypeSelect && testCardRef.current?.identification_type) {
+              const target = testCardRef.current.identification_type;
+              for (const option of Array.from(idTypeSelect.options)) {
+                if (option.value === target || option.text === target) {
+                  idTypeSelect.value = option.value;
+                  break;
+                }
+              }
+            }
           },
           onSubmit: async (event) => {
             event.preventDefault();
@@ -172,10 +185,11 @@ export default function CardPaymentForm({
             const currentTestCard = testCardRef.current;
 
             try {
+              await new Promise((resolve) => window.setTimeout(resolve, 0));
               const data = cardFormRef.current?.getCardFormData();
-              if (!data?.token) {
+              if (!data?.token || data.token.length < 20) {
                 throw new Error(
-                  "No se pudo tokenizar la tarjeta. Usa vencimiento 11/30, titular APRO y tipo doc. Otro.",
+                  "No se pudo tokenizar la tarjeta. Recarga con Ctrl+Shift+R, usa vencimiento 11/30, titular APRO y doc. Otro.",
                 );
               }
 
@@ -263,7 +277,7 @@ export default function CardPaymentForm({
 
       {invalidKey && (
         <p className="text-center text-xs text-red-500">
-          No se pudo cargar la public_key de tarjetas. Revisa GET /mercadopago/config.
+          No se pudo cargar public_key APP_USR. Revisa GET /mercadopago/config.
         </p>
       )}
 
