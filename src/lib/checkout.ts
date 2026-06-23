@@ -111,6 +111,13 @@ export async function createCheckoutPreference(
     const message = Array.isArray(err.message)
       ? err.message.join(", ")
       : err.message;
+
+    if (res.status === 500) {
+      throw new Error(
+        "El servidor de pagos no está disponible. Revisa que el backend en Render tenga las credenciales de Mercado Pago configuradas.",
+      );
+    }
+
     throw new Error(message ?? "Error al crear el pago");
   }
 
