@@ -7,7 +7,6 @@ export type Product = {
   image: string;
   images: string[];
   description: string;
-  searchQuery: string;
   badge?: string;
 };
 
@@ -19,24 +18,25 @@ export const categories = [
   "Belleza",
 ] as const;
 
+const discoSetImages = [
+  "/products/set-collares-disco/1.avif",
+  "/products/set-collares-disco/2.avif",
+  "/products/set-collares-disco/3.avif",
+  "/products/set-collares-disco/4.avif",
+];
+
 export const products: Product[] = [
   {
     id: "1",
-    name: "Set Collares Capas Dorado",
+    name: "Set Collares Capas Disco Dorado",
     category: "Joyería",
     price: 12990,
     originalPrice: 18990,
-    image:
-      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&h=1000&fit=crop&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&h=1000&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&h=1000&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1611591434241-42e4289b172b?w=800&h=1000&fit=crop&q=80",
-    ],
+    image: discoSetImages[0],
+    images: discoSetImages,
     description:
-      "Set de 3 collares en capas con acabado dorado. Perfecto para looks costeros y regalo aesthetic.",
-    searchQuery: "layered gold necklace set women",
-    badge: "Top",
+      "Set de collares en capas con dijes disco en acabado dorado. Estilo minimal aesthetic, ideal para uso diario, salidas y regalo. Usalos juntos o por separado.",
+    badge: "Nuevo",
   },
   {
     id: "2",
@@ -53,8 +53,6 @@ export const products: Product[] = [
     ],
     description:
       "Mini bolso crossbody estilo retro con correa ajustable. Compacto y versátil para salidas.",
-    searchQuery: "mini crossbody bag retro women",
-    badge: "Nuevo",
   },
   {
     id: "3",
@@ -69,7 +67,6 @@ export const products: Product[] = [
     ],
     description:
       "Pack de 12 scrunchies en satín suave. Colores pastel mezclados, ideal para regalo.",
-    searchQuery: "satin scrunchies set 12pcs",
   },
   {
     id: "4",
@@ -85,7 +82,6 @@ export const products: Product[] = [
     ],
     description:
       "Lentes de sol cat eye con montura rosa translúcida. Protección UV400 y estilo Y2K.",
-    searchQuery: "cat eye sunglasses pink women uv400",
     badge: "Trend",
   },
   {
@@ -101,7 +97,6 @@ export const products: Product[] = [
     ],
     description:
       "Organizador acrílico transparente con cajones. Mantiene tu setup de maquillaje ordenado.",
-    searchQuery: "acrylic makeup organizer drawer",
   },
   {
     id: "6",
@@ -116,7 +111,6 @@ export const products: Product[] = [
     ],
     description:
       "Cinturón cadena dorado ajustable. Ideal sobre blazers, vestidos o denim de tiro alto.",
-    searchQuery: "gold chain belt women adjustable",
   },
   {
     id: "7",
@@ -132,7 +126,6 @@ export const products: Product[] = [
     ],
     description:
       "Set de 6 anillos apilables en tonos dorado y plateado. Tallas mixtas incluidas.",
-    searchQuery: "stackable rings set gold silver 6pcs",
     badge: "Oferta",
   },
   {
@@ -148,7 +141,6 @@ export const products: Product[] = [
     ],
     description:
       "Bandolera mini en cuero vegano con herrajes dorados. Espacio para celular y esenciales.",
-    searchQuery: "mini shoulder bag vegan leather gold",
   },
   {
     id: "9",
@@ -163,7 +155,6 @@ export const products: Product[] = [
     ],
     description:
       "Collar con perlas naturales y dije concha. Vibes costeras, perfecto para Viña del Mar.",
-    searchQuery: "pearl shell necklace beach cowrie",
     badge: "Costa",
   },
   {
@@ -180,7 +171,6 @@ export const products: Product[] = [
     ],
     description:
       "Espejo de maquillaje con luz LED regulable. Recargable por USB, compacto para bolso.",
-    searchQuery: "led makeup mirror portable rechargeable",
   },
   {
     id: "11",
@@ -195,7 +185,6 @@ export const products: Product[] = [
     ],
     description:
       "Set de 5 pulseras tipo friendship en colores pastel. Regalo perfecto para amigas.",
-    searchQuery: "friendship bracelets set pastel 5pcs",
   },
   {
     id: "12",
@@ -210,7 +199,6 @@ export const products: Product[] = [
     ],
     description:
       "Riñonera color nude con correa gruesa. Estilo streetwear aesthetic, unisex.",
-    searchQuery: "fanny pack belt bag nude aesthetic",
     badge: "Nuevo",
   },
 ];
@@ -225,13 +213,4 @@ export function formatCLP(value: number) {
     currency: "CLP",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-export function getSupplierLinks(query: string) {
-  const q = encodeURIComponent(query);
-  return {
-    aliexpress: `https://www.aliexpress.com/wholesale?SearchText=${q}`,
-    temu: `https://www.temu.com/search_result.html?search_key=${q}`,
-    google: `https://www.google.com/search?q=${q}+aliexpress+temu`,
-  };
 }

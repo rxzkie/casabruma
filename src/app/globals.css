@@ -9,6 +9,13 @@
   --bruma-rose: #c4848a;
   --bruma-deep: #2c3338;
   --nav-height: 56px;
+  --header-height: 3.5rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --header-height: 4rem;
+  }
 }
 
 @theme inline {
@@ -38,6 +45,10 @@ body {
 
 .font-display {
   font-family: var(--font-cormorant), Georgia, serif;
+}
+
+.pt-header-safe {
+  padding-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
 }
 
 .pt-safe {

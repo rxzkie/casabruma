@@ -9,7 +9,7 @@ type ProductGalleryProps = {
 };
 
 export default function ProductGallery({ images, name }: ProductGalleryProps) {
-  const gallery = images.filter(Boolean);
+  const gallery = (images ?? []).filter(Boolean);
   const [active, setActive] = useState(0);
   const current = gallery[active] ?? gallery[0] ?? "";
 

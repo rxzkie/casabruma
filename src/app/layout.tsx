@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import Providers from "@/components/Providers";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -15,13 +16,17 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Bruma Store | Accesorios Aesthetic",
+  title: "Casa Bruma | Accesorios Aesthetic",
   description:
     "Accesorios aesthetic, joyería y bolsos. El detalle que completa tu mood. Envíos a todo Chile desde Viña del Mar.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Bruma Store",
+    title: "Casa Bruma",
   },
 };
 
@@ -45,7 +50,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased" suppressHydrationWarning>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

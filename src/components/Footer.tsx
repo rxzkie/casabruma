@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "./Logo";
 
 export default function Footer() {
   return (
@@ -8,12 +9,7 @@ export default function Footer() {
     >
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:gap-10 sm:px-6 sm:py-16 md:grid-cols-3">
         <div>
-          <p className="font-display text-xl tracking-[0.15em] sm:text-2xl">
-            BRUMA
-          </p>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.35em] text-bruma-mist">
-            Store
-          </p>
+          <Logo size="lg" light />
           <p className="mt-3 text-sm leading-relaxed text-bruma-cream/50 sm:mt-4">
             Accesorios aesthetic con vibes costeras. Desde Viña del Mar para
             todo Chile.
@@ -57,12 +53,12 @@ export default function Footer() {
           <ul className="mt-3 space-y-2.5 text-sm text-bruma-cream/70 sm:mt-4">
             <li>
               <Link
-                href="https://instagram.com"
+                href="https://instagram.com/casa.bruma.store"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-[44px] items-center transition active:text-white sm:min-h-0"
               >
-                Instagram @bruma.store
+                Instagram @casa.bruma.store
               </Link>
             </li>
             <li>
@@ -80,7 +76,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10 px-4 py-5 text-center text-[11px] text-bruma-cream/35 sm:py-6 sm:text-xs">
-        © {new Date().getFullYear()} Bruma Store. Todos los derechos reservados.
+        © {new Date().getFullYear()} Casa Bruma. Todos los derechos reservados.
       </div>
     </footer>
   );

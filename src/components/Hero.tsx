@@ -1,6 +1,16 @@
 import Link from "next/link";
+import ProductImage from "./ProductImage";
+import { formatCLP } from "@/lib/format";
+import { getProductImageUrl } from "@/lib/product";
+import type { ApiProduct } from "@/types/product";
 
-export default function Hero() {
+type HeroProps = {
+  featured?: ApiProduct | null;
+};
+
+export default function Hero({ featured }: HeroProps) {
+  const featuredImage = featured ? getProductImageUrl(featured) : null;
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-bruma-fog via-bruma-cream to-bruma-blush">
       <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-bruma-mist/20 blur-3xl sm:h-80 sm:w-80" />
@@ -26,57 +36,46 @@ export default function Hero() {
               Ver catálogo
             </Link>
             <Link
-              href="https://instagram.com"
+              href="https://instagram.com/casa.bruma.store"
               target="_blank"
               rel="noopener noreferrer"
               className="flex min-h-[48px] items-center justify-center rounded-full border border-bruma-deep/20 px-6 text-sm tracking-wide text-bruma-deep transition active:border-bruma-rose active:text-bruma-rose sm:min-h-0 sm:px-8 sm:py-3.5"
             >
-              @bruma.store
+              @casa.bruma.store
             </Link>
           </div>
         </div>
-        <div className="relative mx-auto mt-8 w-full max-w-sm sm:mt-10 sm:max-w-md lg:mt-0 lg:max-w-none">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-3 pt-6 sm:space-y-4 sm:pt-8">
-              <div className="aspect-[3/4] overflow-hidden rounded-xl bg-white shadow-lg shadow-bruma-deep/5 sm:rounded-2xl">
-                <div
-                  className="h-full w-full bg-cover bg-center"
-                  style={{
-                    backgroundImage:
-                      "url(https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&h=530&fit=crop)",
-                  }}
+        {featured && featuredImage && (
+          <div className="relative mx-auto mt-8 w-full max-w-sm sm:mt-10 sm:max-w-md lg:mt-0 lg:max-w-none">
+            <Link
+              href={`/producto/${featured.slug}`}
+              className="block overflow-hidden rounded-2xl bg-white shadow-lg shadow-bruma-deep/10"
+            >
+              <div className="relative aspect-square">
+                <ProductImage
+                  src={featuredImage}
+                  alt={featured.name}
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover object-center"
                 />
               </div>
-              <div className="rounded-xl bg-white/80 p-3 shadow-lg shadow-bruma-deep/5 backdrop-blur sm:rounded-2xl sm:p-5">
-                <p className="font-display text-2xl text-bruma-deep sm:text-3xl">
-                  +500
-                </p>
-                <p className="text-xs text-bruma-deep/50 sm:text-sm">
-                  clientas felices
-                </p>
-              </div>
-            </div>
-            <div className="space-y-3 sm:space-y-4">
-              <div className="rounded-xl bg-bruma-deep p-3 text-bruma-cream shadow-lg sm:rounded-2xl sm:p-5">
-                <p className="text-[10px] uppercase tracking-widest text-bruma-mist sm:text-xs">
-                  Envío gratis
-                </p>
-                <p className="mt-1 font-display text-xl sm:text-2xl">
-                  Sobre $25.000
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  {featured.tag && (
+                    <p className="text-[10px] uppercase tracking-widest text-bruma-mist">
+                      {featured.tag}
+                    </p>
+                  )}
+                  <p className="font-medium text-bruma-deep">{featured.name}</p>
+                </div>
+                <p className="font-medium text-bruma-rose">
+                  {formatCLP(featured.price)}
                 </p>
               </div>
-              <div className="aspect-[3/4] overflow-hidden rounded-xl bg-white shadow-lg shadow-bruma-deep/5 sm:rounded-2xl">
-                <div
-                  className="h-full w-full bg-cover bg-center"
-                  style={{
-                    backgroundImage:
-                      "url(https://images.unsplash.com/photo-1590874103328-eac1423a8f6d?w=400&h=530&fit=crop)",
-                  }}
-                />
-              </div>
-            </div>
+            </Link>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

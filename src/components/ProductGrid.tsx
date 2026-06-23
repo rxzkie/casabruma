@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { categories, products } from "@/data/products";
+import type { ApiProduct, CategoryItem } from "@/types/product";
 import ProductCard from "./ProductCard";
 
-export default function ProductGrid() {
-  const [active, setActive] = useState<string>("Todos");
+type ProductGridProps = {
+  products: ApiProduct[];
+  categories: CategoryItem[];
+};
+
+export default function ProductGrid({ products, categories }: ProductGridProps) {
+  const [active, setActive] = useState<string>("todos");
 
   const filtered =
-    active === "Todos"
+    active === "todos"
       ? products
       : products.filter((p) => p.category === active);
 
@@ -29,29 +34,37 @@ export default function ProductGrid() {
           aesthetic.
         </p>
       </div>
-      <div className="-mx-4 mt-8 overflow-x-auto px-4 scrollbar-hide sm:mx-0 sm:mt-10 sm:overflow-visible sm:px-0">
-        <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap sm:justify-center">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActive(cat)}
-              className={`min-h-[40px] shrink-0 rounded-full px-4 py-2 text-sm tracking-wide transition active:scale-95 sm:px-5 ${
-                active === cat
-                  ? "bg-bruma-deep text-bruma-cream"
-                  : "bg-bruma-sand/40 text-bruma-deep/70 active:bg-bruma-sand"
-              }`}
-            >
-              {cat}
-            </button>
+      {categories.length > 0 && (
+        <div className="-mx-4 mt-8 overflow-x-auto px-4 scrollbar-hide sm:mx-0 sm:mt-10 sm:overflow-visible sm:px-0">
+          <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap sm:justify-center">
+            {categories.map((cat) => (
+              <button
+                key={cat.category}
+                type="button"
+                onClick={() => setActive(cat.category)}
+                className={`min-h-[40px] shrink-0 rounded-full px-4 py-2 text-sm tracking-wide transition active:scale-95 sm:px-5 ${
+                  active === cat.category
+                    ? "bg-bruma-deep text-bruma-cream"
+                    : "bg-bruma-sand/40 text-bruma-deep/70 active:bg-bruma-sand"
+                }`}
+              >
+                {cat.category.charAt(0).toUpperCase() + cat.category.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {filtered.length === 0 ? (
+        <p className="mt-16 text-center text-sm text-bruma-deep/40">
+          No hay productos en esta categoría.
+        </p>
+      ) : (
+        <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 sm:mt-12 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+          {filtered.map((product) => (
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
-      </div>
-      <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-8 sm:mt-12 sm:gap-x-6 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4">
-        {filtered.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      )}
     </section>
   );
 }

@@ -20,7 +20,7 @@ export default function ProductImage({
 }: ProductImageProps) {
   const [failed, setFailed] = useState(false);
 
-  if (!src || failed) {
+  if (!src?.trim() || failed) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-bruma-sand/50">
         <svg

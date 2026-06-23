@@ -5,7 +5,7 @@ export default function MobileNav() {
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-bruma-sand/60 bg-bruma-cream/95 backdrop-blur-md pb-safe md:hidden">
       <div className="mx-auto grid max-w-lg grid-cols-4">
         <Link
-          href="#catalogo"
+          href="/#catalogo"
           className="flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-bruma-deep/70 active:text-bruma-rose"
         >
           <svg
@@ -25,7 +25,7 @@ export default function MobileNav() {
           <span className="text-[10px]">Catálogo</span>
         </Link>
         <Link
-          href="#novedades"
+          href="/#novedades"
           className="flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-bruma-deep/70 active:text-bruma-rose"
         >
           <svg
@@ -45,7 +45,7 @@ export default function MobileNav() {
           <span className="text-[10px]">Novedades</span>
         </Link>
         <Link
-          href="https://instagram.com"
+          href="https://instagram.com/casa.bruma.store"
           target="_blank"
           rel="noopener noreferrer"
           className="flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-bruma-deep/70 active:text-bruma-rose"
