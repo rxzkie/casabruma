@@ -14,18 +14,7 @@ type MercadoPagoCardForm = {
 type MercadoPagoCardFormConfig = {
   amount: string;
   iframe: boolean;
-  form: {
-    id: string;
-    cardNumber: { id: string; placeholder: string };
-    expirationDate: { id: string; placeholder: string };
-    securityCode: { id: string; placeholder: string };
-    cardholderName: { id: string; placeholder: string };
-    issuer: { id: string; placeholder: string };
-    installments: { id: string; placeholder: string };
-    identificationType: { id: string; placeholder: string };
-    identificationNumber: { id: string; placeholder: string };
-    cardholderEmail: { id: string; placeholder: string };
-  };
+  form: Record<string, unknown>;
   callbacks: {
     onFormMounted?: (error: Error | null) => void;
     onFetching?: (resource: string) => void;
@@ -33,8 +22,21 @@ type MercadoPagoCardFormConfig = {
   };
 };
 
+type MercadoPagoBrickController = {
+  unmount: () => void;
+};
+
+type MercadoPagoBricksBuilder = {
+  create: (
+    brick: string,
+    containerId: string,
+    settings: Record<string, unknown>,
+  ) => Promise<MercadoPagoBrickController>;
+};
+
 type MercadoPagoInstance = {
   cardForm: (config: MercadoPagoCardFormConfig) => MercadoPagoCardForm;
+  bricks: () => MercadoPagoBricksBuilder;
 };
 
 interface Window {
