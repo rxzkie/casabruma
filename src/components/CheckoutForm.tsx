@@ -74,6 +74,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           Paga con crédito o débito sin cuenta de Mercado Pago.
         </p>
         <CardPaymentForm
+          key="card-payment"
           checkout={form}
           onBack={() => setStep("details")}
           onComplete={onContinue}

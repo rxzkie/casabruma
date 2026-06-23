@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useMercadoPago } from "@/context/MercadoPagoContext";
 import {
@@ -31,7 +31,7 @@ function formatCardNumber(number: string) {
   return number.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
 }
 
-function getTestCardHint(testCard?: MercadoPagoTestCard) {
+function normalizeTestCard(testCard?: MercadoPagoTestCard) {
   if (!testCard) return null;
   const expiration =
     testCard.expiration === "11/25" ? "11/30" : testCard.expiration;
@@ -51,23 +51,39 @@ export default function CardPaymentForm({
   const [loading, setLoading] = useState(false);
   const [formMounted, setFormMounted] = useState(false);
   const cardFormRef = useRef<MercadoPagoCardForm | null>(null);
+  const mountIdRef = useRef(0);
+  const checkoutRef = useRef(checkout);
+  const itemsRef = useRef(items);
+  const onCompleteRef = useRef(onComplete);
 
-  const testCard = getTestCardHint(config?.test_card);
+  checkoutRef.current = checkout;
+  itemsRef.current = items;
+  onCompleteRef.current = onComplete;
+
+  const testCard = useMemo(
+    () => normalizeTestCard(config?.test_card),
+    [config?.test_card],
+  );
   const invalidKey = !isValidCardPublicKey(cardPublicKey);
   const payerEmail = checkout.payer.email.trim();
   const cardholderName = testCard
     ? testCard.holder_name
     : `${checkout.payer.name} ${checkout.payer.surname}`.trim();
 
-  useEffect(() => {
-    if (!ready || invalidKey || items.length === 0) return;
+  const testCardRef = useRef(testCard);
+  testCardRef.current = testCard;
 
-    let cancelled = false;
+  useEffect(() => {
+    if (!ready || invalidKey) return;
+
+    const mountId = ++mountIdRef.current;
+    const email = payerEmail;
+    const holder = cardholderName;
     setFormMounted(false);
     setError("");
 
     const timer = window.setTimeout(() => {
-      if (cancelled) return;
+      if (mountId !== mountIdRef.current) return;
       if (!document.getElementById(FORM_ID)) return;
 
       const mp = new window.MercadoPago(cardPublicKey, { locale: "es-CL" });
@@ -116,7 +132,7 @@ export default function CardPaymentForm({
         },
         callbacks: {
           onFormMounted: (err) => {
-            if (cancelled) return;
+            if (mountId !== mountIdRef.current) return;
             if (err) {
               setFormMounted(false);
               setError("Error al cargar el formulario de pago");
@@ -127,18 +143,18 @@ export default function CardPaymentForm({
             const emailInput = document.getElementById(
               `${FORM_ID}__cardholderEmail`,
             ) as HTMLInputElement | null;
-            if (emailInput) emailInput.value = payerEmail;
+            if (emailInput) emailInput.value = email;
 
             const nameInput = document.getElementById(
               `${FORM_ID}__cardholderName`,
             ) as HTMLInputElement | null;
-            if (nameInput) nameInput.value = cardholderName;
+            if (nameInput) nameInput.value = holder;
 
             const idNumberInput = document.getElementById(
               `${FORM_ID}__identificationNumber`,
             ) as HTMLInputElement | null;
-            if (idNumberInput && testCard?.identification_number) {
-              idNumberInput.value = testCard.identification_number;
+            if (idNumberInput && testCardRef.current?.identification_number) {
+              idNumberInput.value = testCardRef.current.identification_number;
             }
           },
           onSubmit: async (event) => {
@@ -146,21 +162,25 @@ export default function CardPaymentForm({
             setLoading(true);
             setError("");
 
+            const currentCheckout = checkoutRef.current;
+            const currentItems = itemsRef.current;
+            const currentTestCard = testCardRef.current;
+
             try {
               const data = cardFormRef.current?.getCardFormData();
               if (!data?.token) {
                 throw new Error(
-                  "No se pudo tokenizar la tarjeta. Revisa número, CVV, vencimiento 11/30 y titular APRO.",
+                  "No se pudo tokenizar la tarjeta. Usa vencimiento 11/30, titular APRO y tipo doc. Otro.",
                 );
               }
 
               const ref = createOrderReference();
-              const description = items
+              const description = currentItems
                 .map((i) => `${i.name} x${i.quantity}`)
                 .join(", ")
                 .slice(0, 200);
 
-              const body = buildCardPaymentBody(checkout, {
+              const body = buildCardPaymentBody(currentCheckout, {
                 amount: total,
                 token: data.token,
                 payment_method_id: data.paymentMethodId,
@@ -169,15 +189,19 @@ export default function CardPaymentForm({
                 description,
                 external_reference: ref,
                 identification_type:
-                  data.identificationType || testCard?.identification_type,
+                  data.identificationType ||
+                  currentTestCard?.identification_type ||
+                  "Otro",
                 identification_number:
-                  data.identificationNumber || testCard?.identification_number,
+                  data.identificationNumber ||
+                  currentTestCard?.identification_number ||
+                  "123456789",
               });
 
               const result = await payWithCard(body);
               const orderRef = result.external_reference ?? ref;
               saveOrderReference(orderRef);
-              onComplete?.();
+              onCompleteRef.current?.();
 
               if (result.status === "approved") {
                 clearCart();
@@ -198,28 +222,13 @@ export default function CardPaymentForm({
           },
         },
       });
-    }, 150);
+    }, 200);
 
     return () => {
-      cancelled = true;
       window.clearTimeout(timer);
       cardFormRef.current = null;
-      setFormMounted(false);
     };
-  }, [
-    ready,
-    invalidKey,
-    cardPublicKey,
-    total,
-    items,
-    checkout,
-    router,
-    clearCart,
-    onComplete,
-    payerEmail,
-    cardholderName,
-    testCard,
-  ]);
+  }, [ready, invalidKey, cardPublicKey, total, payerEmail, cardholderName, router, clearCart]);
 
   if (configLoading) {
     return (
@@ -235,7 +244,7 @@ export default function CardPaymentForm({
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Tarjeta de prueba: {formatCardNumber(testCard.number)} · CVV{" "}
           {testCard.cvv} · vence {testCard.expiration} · titular{" "}
-          {testCard.holder_name} · email distinto al de tu cuenta MP
+          {testCard.holder_name} · doc. Otro / 123456789
         </div>
       )}
 
