@@ -2,6 +2,7 @@ import { API_URL } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
 import type {
   CheckoutData,
+  MercadoPagoConfig,
   Payment,
   PreferenceResponse,
 } from "@/types/payment";
@@ -61,6 +62,7 @@ export async function createCheckoutPreference(
         id: item.id,
         title: item.name,
         picture_url: item.image_url || undefined,
+        category_id: "others",
         quantity: item.quantity,
         unit_price: item.price,
         currency_id: "CLP",
@@ -78,7 +80,6 @@ export async function createCheckoutPreference(
         failure: `${origin}/pago-fallido?ref=${orderRef}`,
         pending: `${origin}/pago-pendiente?ref=${orderRef}`,
       },
-      statement_descriptor: "CASA BRUMA",
     }),
   });
 
@@ -108,9 +109,21 @@ export async function getPaymentByReference(
 }
 
 export function redirectToMercadoPago(data: PreferenceResponse) {
-  const url = data.init_point || data.sandbox_init_point;
+  const url = data.checkout_url || data.init_point || data.sandbox_init_point;
   if (!url) throw new Error("No se recibió URL de pago");
   window.location.href = url;
+}
+
+export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> {
+  try {
+    const res = await fetch(`${API_URL}/mercadopago/config`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 export function validateCheckout(checkout: CheckoutData): string | null {

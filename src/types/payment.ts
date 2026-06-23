@@ -26,10 +26,18 @@ export type Payment = {
 };
 
 export type PreferenceResponse = {
-  id: string;
-  init_point: string;
+  preference_id: string;
+  checkout_url: string;
+  init_point?: string;
   sandbox_init_point?: string;
   external_reference?: string;
+};
+
+export type MercadoPagoConfig = {
+  public_key: string;
+  sandbox: boolean;
+  country: string;
+  currency: string;
 };
 
 export type CheckoutPayer = {
