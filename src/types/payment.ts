@@ -41,12 +41,16 @@ export type MercadoPagoConfig = {
   integration: string;
   payment_flow: string;
   public_key: string;
+  application_id?: string | null;
+  credentials_ok?: boolean;
+  credential_mode?: "test" | "production";
   sandbox: boolean;
   mode: "test" | "production";
   country: string;
   currency: string;
   sdk_url: string;
   endpoints: {
+    config?: string;
     pay: string;
     status: string;
   };

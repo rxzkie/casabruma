@@ -21,8 +21,10 @@ export function getCardPublicKey(config: MercadoPagoConfig | null): string {
   return config?.public_key?.trim() ?? "";
 }
 
-export function isValidCardPublicKey(key: string) {
-  return key.startsWith("APP_USR-");
+export function isValidCardPublicKey(key: string, sandbox = false) {
+  if (key.startsWith("APP_USR-")) return true;
+  if (sandbox && key.startsWith("TEST-")) return true;
+  return false;
 }
 
 export function normalizeChilePhone(phone: string): string {

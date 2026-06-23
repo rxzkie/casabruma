@@ -46,8 +46,13 @@ export default function CardPaymentForm({
   onComplete,
 }: CardPaymentFormProps) {
   const { items, total, clearCart } = useCart();
-  const { config, cardPublicKey, ready, loading: configLoading } =
-    useMercadoPago();
+  const {
+    config,
+    cardPublicKey,
+    ready,
+    loading: configLoading,
+    refreshConfig,
+  } = useMercadoPago();
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,7 +72,8 @@ export default function CardPaymentForm({
     [config?.test_card],
   );
   const isTestMode = Boolean(config?.sandbox || config?.test_mode || testCard);
-  const invalidKey = !isValidCardPublicKey(cardPublicKey);
+  const invalidKey = !isValidCardPublicKey(cardPublicKey, config?.sandbox);
+  const credentialsOk = config?.credentials_ok !== false;
   const payerEmail = checkout.payer.email.trim();
   const mpEmail = isTestMode ? MP_TEST_BUYER_EMAIL : payerEmail;
   const cardholderName = isTestMode
@@ -80,7 +86,11 @@ export default function CardPaymentForm({
   isTestModeRef.current = isTestMode;
 
   useEffect(() => {
-    if (!ready || invalidKey) return;
+    refreshConfig();
+  }, [refreshConfig]);
+
+  useEffect(() => {
+    if (!ready || invalidKey || !credentialsOk) return;
 
     const mountId = ++mountIdRef.current;
     const email = mpEmail;
@@ -289,13 +299,21 @@ export default function CardPaymentForm({
         </div>
       )}
 
+      {!credentialsOk && (
+        <p className="text-center text-xs text-red-500">
+          Credenciales MP mal configuradas en Render. Copia MP_PUBLIC_KEY y
+          MP_ACCESS_TOKEN del mismo panel. Con MP_SANDBOX=true agrega
+          MP_TEST_PUBLIC_KEY y MP_TEST_ACCESS_TOKEN.
+        </p>
+      )}
+
       {invalidKey && (
         <p className="text-center text-xs text-red-500">
           No se pudo cargar public_key APP_USR. Revisa GET /mercadopago/config.
         </p>
       )}
 
-      <form id={FORM_ID} className="space-y-3">
+      <form id={FORM_ID} key={cardPublicKey} className="space-y-3">
         <div>
           <label className="mb-1 block text-xs text-bruma-mist">
             Número de tarjeta
@@ -392,7 +410,7 @@ export default function CardPaymentForm({
           )}
           <button
             type="submit"
-            disabled={loading || !ready || !formMounted || invalidKey}
+            disabled={loading || !ready || !formMounted || invalidKey || !credentialsOk}
             className="flex min-h-[48px] flex-1 items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
           >
             {loading ? "Procesando..." : `Pagar ${formatCLP(total)}`}

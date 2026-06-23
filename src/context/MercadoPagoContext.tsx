@@ -3,6 +3,7 @@
 import Script from "next/script";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -22,6 +23,7 @@ type MercadoPagoContextValue = {
   sdkReady: boolean;
   loading: boolean;
   ready: boolean;
+  refreshConfig: () => Promise<void>;
 };
 
 const MercadoPagoContext = createContext<MercadoPagoContextValue>({
@@ -30,6 +32,7 @@ const MercadoPagoContext = createContext<MercadoPagoContextValue>({
   sdkReady: false,
   loading: true,
   ready: false,
+  refreshConfig: async () => {},
 });
 
 export function useMercadoPago() {
@@ -54,26 +57,40 @@ export function MercadoPagoProvider({ children }: { children: ReactNode }) {
   const [sdkReady, setSdkReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    getMercadoPagoConfig()
-      .then(setConfig)
-      .finally(() => setLoading(false));
+  const refreshConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      const next = await getMercadoPagoConfig();
+      setConfig(next);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    refreshConfig();
+  }, [refreshConfig]);
+
   const cardPublicKey = useMemo(() => getCardPublicKey(config), [config]);
-  const validKey = isValidCardPublicKey(cardPublicKey);
+  const sandbox = Boolean(config?.sandbox);
+  const validKey = isValidCardPublicKey(cardPublicKey, sandbox);
+  const credentialsOk = config?.credentials_ok !== false;
   const sdkUrl = config?.sdk_url ?? "https://sdk.mercadopago.com/js/v2";
-  const ready = !loading && validKey && sdkReady;
+  const ready = !loading && validKey && credentialsOk && sdkReady;
 
   return (
     <MercadoPagoContext.Provider
-      value={{ config, cardPublicKey, sdkReady, loading, ready }}
+      value={{ config, cardPublicKey, sdkReady, loading, ready, refreshConfig }}
     >
-      {validKey && (
+      {validKey && credentialsOk && (
         <Script
+          key={cardPublicKey}
           src={sdkUrl}
           strategy="afterInteractive"
-          onLoad={() => waitForMercadoPago(() => setSdkReady(true))}
+          onLoad={() => {
+            setSdkReady(false);
+            waitForMercadoPago(() => setSdkReady(true));
+          }}
         />
       )}
       {children}
