@@ -114,8 +114,16 @@ export function buildCardPaymentBody(
     external_reference: string;
     identification_type?: string;
     identification_number?: string;
+    testMode?: boolean;
   },
 ): CardPaymentBody {
+  const idType = payment.testMode
+    ? "Otro"
+    : payment.identification_type || "Otro";
+  const idNumber = payment.testMode
+    ? "123456789"
+    : payment.identification_number || "123456789";
+
   const body: CardPaymentBody = {
     amount: payment.amount,
     token: payment.token,
@@ -127,8 +135,8 @@ export function buildCardPaymentBody(
       email: checkout.payer.email.trim(),
       name: checkout.payer.name.trim(),
       surname: checkout.payer.surname.trim(),
-      identification_type: payment.identification_type || "Otro",
-      identification_number: payment.identification_number || "123456789",
+      identification_type: idType,
+      identification_number: idNumber,
     },
     shipping: {
       street: checkout.shipping.street.trim(),

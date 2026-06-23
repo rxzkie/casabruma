@@ -11,7 +11,7 @@ import {
   payWithCard,
   saveOrderReference,
 } from "@/lib/checkout";
-import { formatCLP } from "@/lib/format";
+import { getRejectionMessage } from "@/lib/mp-errors";
 import type { CheckoutData, MercadoPagoTestCard } from "@/types/payment";
 
 const FORM_ID = "bruma-card-payment";
@@ -188,28 +188,29 @@ export default function CardPaymentForm({
                 issuer_id: data.issuerId ? Number(data.issuerId) : undefined,
                 description,
                 external_reference: ref,
-                identification_type:
-                  data.identificationType ||
-                  currentTestCard?.identification_type ||
-                  "Otro",
-                identification_number:
-                  data.identificationNumber ||
-                  currentTestCard?.identification_number ||
-                  "123456789",
+                testMode: Boolean(currentTestCard),
+                identification_type: currentTestCard
+                  ? "Otro"
+                  : data.identificationType,
+                identification_number: currentTestCard
+                  ? "123456789"
+                  : data.identificationNumber,
               });
 
               const result = await payWithCard(body);
               const orderRef = result.external_reference ?? ref;
               saveOrderReference(orderRef);
-              onCompleteRef.current?.();
 
               if (result.status === "approved") {
+                onCompleteRef.current?.();
                 clearCart();
                 router.push(`/pago/exito?ref=${orderRef}`);
               } else if (result.status === "pending") {
+                onCompleteRef.current?.();
                 router.push(`/pago/pendiente?ref=${orderRef}`);
               } else {
-                router.push(`/pago/error?ref=${orderRef}`);
+                setError(getRejectionMessage(result.status_detail));
+                setLoading(false);
               }
             } catch (err) {
               setError(
@@ -280,8 +281,9 @@ export default function CardPaymentForm({
           <input
             id={`${FORM_ID}__cardholderName`}
             type="text"
+            readOnly={Boolean(testCard)}
             defaultValue={cardholderName}
-            className={fieldClass}
+            className={`${fieldClass}${testCard ? " bg-bruma-sand/20" : ""}`}
           />
         </div>
         <div>
@@ -321,9 +323,10 @@ export default function CardPaymentForm({
             <input
               id={`${FORM_ID}__identificationNumber`}
               type="text"
+              readOnly={Boolean(testCard)}
               defaultValue={testCard?.identification_number ?? ""}
               placeholder="123456789"
-              className={fieldClass}
+              className={`${fieldClass}${testCard ? " bg-bruma-sand/20" : ""}`}
             />
           </div>
         </div>

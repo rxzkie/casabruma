@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { getPaymentByReference } from "@/lib/checkout";
-import { formatCLP } from "@/lib/format";
+import { getRejectionMessage } from "@/lib/mp-errors";
 import type { Payment } from "@/types/payment";
 
 type Variant = "success" | "failure" | "pending";
@@ -86,6 +86,11 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
           <p className="mt-1 text-sm capitalize text-bruma-deep/70">
             Estado: {payment.status}
           </p>
+          {payment.status_detail && variant === "failure" && (
+            <p className="mt-2 text-sm text-red-600">
+              {getRejectionMessage(payment.status_detail)}
+            </p>
+          )}
           {payment.description && (
             <p className="mt-1 text-sm text-bruma-deep/70">
               Producto: {payment.description}
