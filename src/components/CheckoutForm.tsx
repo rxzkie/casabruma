@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PaymentBrickForm from "@/components/PaymentBrickForm";
+import CardPaymentForm from "@/components/CardPaymentForm";
 import { useCart } from "@/context/CartContext";
 import {
   getSavedCheckout,
@@ -73,7 +73,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         <p className="text-xs leading-relaxed text-bruma-deep/55">
           Paga con tarjeta de crédito o débito sin cuenta de Mercado Pago.
         </p>
-        <PaymentBrickForm
+        <CardPaymentForm
           checkout={form}
           onBack={() => setStep("details")}
           onComplete={onContinue}
