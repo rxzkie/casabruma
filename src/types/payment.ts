@@ -25,73 +25,47 @@ export type Payment = {
   updated_at?: string;
 };
 
-export type MercadoPagoTestCard = {
-  number: string;
-  cvv: string;
-  expiration: string;
-  holder_name: string;
-  identification_type: string;
-  identification_number: string;
-  payment_method_id: string;
-};
-
 export type MercadoPagoConfig = {
   integration: string;
   payment_flow: string;
-  public_key: string;
-  application_id?: string | null;
-  credentials_ok?: boolean;
-  credential_mode?: "test" | "production";
   sandbox: boolean;
   mode: "test" | "production";
   country: string;
   currency: string;
-  sdk_url: string;
+  credentials_ok?: boolean;
+  credential_mode?: "test" | "production";
+  application_id?: string | null;
+  checkout_base_url?: string;
   endpoints: {
-    config?: string;
-    pay: string;
+    checkout: string;
     status: string;
   };
-  test_mode?: boolean;
-  test_buyer_email?: string;
-  test_card?: MercadoPagoTestCard;
-  note?: string;
 };
 
-export type CardPaymentItem = {
+export type CheckoutProItem = {
   id: string;
   title: string;
   quantity: number;
   unit_price: number;
+  description?: string;
+  picture_url?: string;
   category_id?: string;
+  currency_id?: string;
 };
 
-export type CardPaymentBody = {
-  amount: number;
-  token: string;
-  payment_method_id: string;
-  installments: number;
-  issuer_id?: number;
-  description: string;
+export type CheckoutProBody = {
+  items: CheckoutProItem[];
+  payer: CheckoutPayer;
+  shipping: CheckoutShipping;
   external_reference: string;
-  test_mode?: boolean;
-  items?: CardPaymentItem[];
-  payer: {
-    email: string;
-    name?: string;
-    surname?: string;
-    phone?: string;
-    identification_type?: string;
-    identification_number?: string;
-  };
-  shipping?: CheckoutShipping;
+  statement_descriptor?: string;
 };
 
-export type CardPaymentResponse = {
-  payment_id: number;
-  status: "approved" | "pending" | "rejected";
-  status_detail: string;
+export type CheckoutProResponse = {
+  preference_id: string;
+  checkout_url: string;
   external_reference: string;
+  sandbox: boolean;
 };
 
 export type CheckoutPayer = {

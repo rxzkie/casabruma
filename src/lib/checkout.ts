@@ -1,10 +1,9 @@
 import { API_URL } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
 import type {
-  CardPaymentBody,
-  CardPaymentItem,
-  CardPaymentResponse,
   CheckoutData,
+  CheckoutProBody,
+  CheckoutProResponse,
   MercadoPagoConfig,
   Payment,
 } from "@/types/payment";
@@ -14,16 +13,6 @@ const ORDER_KEY = "lastOrderRef";
 
 export function createOrderReference() {
   return `orden-${Date.now()}`;
-}
-
-export function getCardPublicKey(config: MercadoPagoConfig | null): string {
-  return config?.public_key?.trim() ?? "";
-}
-
-export function isValidCardPublicKey(key: string, sandbox = false) {
-  if (key.startsWith("APP_USR-")) return true;
-  if (sandbox && key.startsWith("TEST-")) return true;
-  return false;
 }
 
 export function normalizeChilePhone(phone: string): string {
@@ -77,86 +66,27 @@ export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> 
   }
 }
 
-export async function payWithCard(
-  body: CardPaymentBody,
-): Promise<CardPaymentResponse> {
-  const res = await fetch(`${API_URL}/mercadopago/payments/card`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err));
-  }
-
-  return res.json();
-}
-
-export async function getPaymentByReference(
-  reference: string,
-): Promise<Payment | null> {
-  const res = await fetch(
-    `${API_URL}/mercadopago/payments/reference/${encodeURIComponent(reference)}`,
-    { cache: "no-store" },
-  );
-  if (!res.ok) return null;
-  return res.json();
-}
-
-export function resolvePayerEmail(
+export function buildCheckoutProBody(
   checkout: CheckoutData,
-  testMode: boolean,
-  config?: MercadoPagoConfig | null,
-) {
-  const buyerEmail = checkout.payer.email.trim();
-  if (!testMode) return buyerEmail;
-  if (config?.credential_mode === "test") {
-    return config.test_buyer_email?.trim() || "test@testuser.com";
-  }
-  return buyerEmail;
-}
-
-export function buildCardPaymentBody(
-  checkout: CheckoutData,
-  payment: {
-    amount: number;
-    token: string;
-    payment_method_id: string;
-    installments: number;
-    issuer_id?: number;
-    description: string;
-    external_reference: string;
-    identification_type?: string;
-    identification_number?: string;
-    testMode?: boolean;
-    payerEmail?: string;
-    items?: CardPaymentItem[];
-  },
-): CardPaymentBody {
-  const testMode = Boolean(payment.testMode);
-  const idType = testMode ? "Otro" : payment.identification_type || "Otro";
-  const idNumber = testMode
-    ? "123456789"
-    : payment.identification_number || "123456789";
-  const payerEmail = payment.payerEmail ?? checkout.payer.email.trim();
-
-  const body: CardPaymentBody = {
-    amount: payment.amount,
-    token: payment.token,
-    payment_method_id: payment.payment_method_id,
-    installments: payment.installments,
-    description: payment.description,
-    external_reference: payment.external_reference,
-    ...(testMode ? { test_mode: true } : {}),
-    ...(payment.items?.length ? { items: payment.items } : {}),
+  items: CartItem[],
+  externalReference: string,
+): CheckoutProBody {
+  return {
+    items: items.map((item) => ({
+      id: item.id,
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: item.price,
+      picture_url: item.image_url || undefined,
+      currency_id: "CLP",
+    })),
     payer: {
-      email: payerEmail,
-      name: testMode ? "APRO" : checkout.payer.name.trim(),
-      surname: testMode ? "TEST" : checkout.payer.surname.trim(),
-      identification_type: idType,
-      identification_number: idNumber,
+      name: checkout.payer.name.trim(),
+      surname: checkout.payer.surname.trim(),
+      email: checkout.payer.email.trim(),
+      ...(checkout.payer.phone?.trim()
+        ? { phone: normalizeChilePhone(checkout.payer.phone) }
+        : {}),
     },
     shipping: {
       street: checkout.shipping.street.trim(),
@@ -171,17 +101,43 @@ export function buildCardPaymentBody(
         ? { postal_code: checkout.shipping.postal_code.trim() }
         : {}),
     },
+    external_reference: externalReference,
+    statement_descriptor: "CASA BRUMA",
   };
+}
 
-  if (checkout.payer.phone?.trim()) {
-    body.payer.phone = normalizeChilePhone(checkout.payer.phone);
+export async function createCheckoutPro(
+  body: CheckoutProBody,
+): Promise<CheckoutProResponse> {
+  const res = await fetch(`${API_URL}/mercadopago/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err));
   }
 
-  if (payment.issuer_id) {
-    body.issuer_id = payment.issuer_id;
+  const data: CheckoutProResponse = await res.json();
+
+  if (!data.checkout_url?.trim()) {
+    throw new Error("Mercado Pago no devolvió checkout_url");
   }
 
-  return body;
+  return data;
+}
+
+export async function getPaymentByReference(
+  reference: string,
+): Promise<Payment | null> {
+  const res = await fetch(
+    `${API_URL}/mercadopago/payments/reference/${encodeURIComponent(reference)}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) return null;
+  return res.json();
 }
 
 export function validateCheckout(checkout: CheckoutData): string | null {

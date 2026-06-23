@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CardPaymentForm from "@/components/CardPaymentForm";
 import { useCart } from "@/context/CartContext";
 import {
+  buildCheckoutProBody,
+  createCheckoutPro,
+  createOrderReference,
+  getMercadoPagoConfig,
   getSavedCheckout,
   saveCheckout,
+  saveOrderReference,
   validateCheckout,
 } from "@/lib/checkout";
 import { formatCLP } from "@/lib/format";
@@ -16,21 +20,25 @@ import {
 } from "@/types/payment";
 
 const inputClass =
-  "w-full rounded-xl border border-bruma-sand bg-white px-3 py-2.5 text-sm text-bruma-deep outline-none transition focus:border-bruma-rose";
+  "w-full rounded-xl border border-bruma-sand bg-white px-3 py-2.5 text-sm text-bruma-deep outline-none transition focus:border-bruma-rose disabled:opacity-60";
 
 type CheckoutFormProps = {
   onContinue?: () => void;
 };
 
 export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
-  const { total } = useCart();
+  const { items, total } = useCart();
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
-  const [step, setStep] = useState<"details" | "payment">("details");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sandbox, setSandbox] = useState(false);
 
   useEffect(() => {
     const saved = getSavedCheckout();
     if (saved) setForm(saved);
+    getMercadoPagoConfig().then((cfg) => {
+      if (cfg) setSandbox(cfg.sandbox);
+    });
   }, []);
 
   function updatePayer(field: keyof CheckoutData["payer"], value: string) {
@@ -50,7 +58,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
     }));
   }
 
-  function handleContinue(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -60,30 +68,31 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
       return;
     }
 
-    saveCheckout(form);
-    setStep("payment");
-  }
+    if (!items.length) {
+      setError("Tu carrito está vacío");
+      return;
+    }
 
-  if (step === "payment") {
-    return (
-      <div className="space-y-4">
-        <p className="text-xs uppercase tracking-widest text-bruma-mist">
-          Pago con tarjeta
-        </p>
-        <p className="text-xs leading-relaxed text-bruma-deep/55">
-          Paga con tarjeta de crédito o débito sin cuenta de Mercado Pago.
-        </p>
-        <CardPaymentForm
-          checkout={form}
-          onBack={() => setStep("details")}
-          onComplete={onContinue}
-        />
-      </div>
-    );
+    saveCheckout(form);
+    setLoading(true);
+
+    try {
+      const ref = createOrderReference();
+      const body = buildCheckoutProBody(form, items, ref);
+      const result = await createCheckoutPro(body);
+      saveOrderReference(result.external_reference ?? ref);
+      onContinue?.();
+      window.location.href = result.checkout_url;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al iniciar el pago",
+      );
+      setLoading(false);
+    }
   }
 
   return (
-    <form onSubmit={handleContinue} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <p className="mb-2 text-xs uppercase tracking-widest text-bruma-mist">
           Datos personales
@@ -95,6 +104,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
             onChange={(e) => updatePayer("name", e.target.value)}
             placeholder="Nombre"
             required
+            disabled={loading}
             className={inputClass}
           />
           <input
@@ -103,6 +113,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
             onChange={(e) => updatePayer("surname", e.target.value)}
             placeholder="Apellido"
             required
+            disabled={loading}
             className={inputClass}
           />
         </div>
@@ -112,6 +123,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           onChange={(e) => updatePayer("email", e.target.value)}
           placeholder="Email"
           required
+          disabled={loading}
           className={`${inputClass} mt-2`}
         />
         <input
@@ -119,6 +131,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           value={form.payer.phone ?? ""}
           onChange={(e) => updatePayer("phone", e.target.value)}
           placeholder="Teléfono (+56912345678) opcional"
+          disabled={loading}
           className={`${inputClass} mt-2`}
         />
       </div>
@@ -133,6 +146,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           onChange={(e) => updateShipping("street", e.target.value)}
           placeholder="Calle"
           required
+          disabled={loading}
           className={inputClass}
         />
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -142,6 +156,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
             onChange={(e) => updateShipping("number", e.target.value)}
             placeholder="Número"
             required
+            disabled={loading}
             className={inputClass}
           />
           <input
@@ -149,6 +164,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
             value={form.shipping.apartment}
             onChange={(e) => updateShipping("apartment", e.target.value)}
             placeholder="Depto (opcional)"
+            disabled={loading}
             className={inputClass}
           />
         </div>
@@ -158,12 +174,14 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           onChange={(e) => updateShipping("city", e.target.value)}
           placeholder="Comuna / Ciudad"
           required
+          disabled={loading}
           className={`${inputClass} mt-2`}
         />
         <select
           value={form.shipping.region}
           onChange={(e) => updateShipping("region", e.target.value)}
           required
+          disabled={loading}
           className={`${inputClass} mt-2`}
         >
           {CHILE_REGIONS.map((region) => (
@@ -174,13 +192,25 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         </select>
       </div>
 
+      <p className="text-xs leading-relaxed text-bruma-deep/55">
+        Serás redirigido a Mercado Pago para pagar con tarjeta, transferencia u
+        otros medios disponibles.
+      </p>
+
+      {sandbox && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Modo prueba activo — usarás el checkout sandbox de Mercado Pago.
+        </p>
+      )}
+
       {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
       <button
         type="submit"
-        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85"
+        disabled={loading}
+        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
       >
-        Continuar al pago · {formatCLP(total)}
+        {loading ? "Redirigiendo..." : `Pagar ${formatCLP(total)}`}
       </button>
     </form>
   );
