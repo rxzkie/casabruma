@@ -36,6 +36,18 @@ export async function getProductBySlug(
   return normalizeProduct(product);
 }
 
+export async function getProductById(id: string): Promise<ApiProduct | null> {
+  const res = await fetch(`${API_URL}/products/${id}`, {
+    next: { revalidate: 60 },
+  });
+
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+
+  const product: ApiProduct = await res.json();
+  return normalizeProduct(product);
+}
+
 export async function getCategories(): Promise<CategoriesResponse> {
   const res = await fetch(`${API_URL}/products/categories`, {
     next: { revalidate: 300 },

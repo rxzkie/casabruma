@@ -25,12 +25,28 @@ export type Payment = {
   updated_at?: string;
 };
 
+export type MercadoPagoTestCard = {
+  number: string;
+  cvv: string;
+  expiration: string;
+  holder_name: string;
+  identification_type: string;
+  identification_number: string;
+  payment_method_id: string;
+};
+
 export type MercadoPagoConfig = {
   public_key: string;
+  checkout_public_key?: string;
   sandbox: boolean;
+  sandbox_checkout?: boolean;
+  card_mode?: "production" | "test";
+  mode?: "test" | "production";
   country: string;
   currency: string;
   sdk_url?: string;
+  checkout_pro_url?: string;
+  test_card?: MercadoPagoTestCard;
 };
 
 export type CardPaymentBody = {
@@ -41,14 +57,15 @@ export type CardPaymentBody = {
   issuer_id?: number;
   description: string;
   external_reference: string;
-  currency_id: string;
   payer: {
     email: string;
     name?: string;
     surname?: string;
+    phone?: string;
     identification_type?: string;
     identification_number?: string;
   };
+  shipping?: CheckoutShipping;
 };
 
 export type CardPaymentResponse = {

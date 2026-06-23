@@ -110,7 +110,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           type="email"
           value={form.payer.email}
           onChange={(e) => updatePayer("email", e.target.value)}
-          placeholder="Email"
+          placeholder="Email (distinto al de tu cuenta MP)"
           required
           className={`${inputClass} mt-2`}
         />

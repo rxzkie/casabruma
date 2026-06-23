@@ -1,12 +1,13 @@
 "use client";
 
-import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useMercadoPago } from "@/context/MercadoPagoContext";
 import {
+  buildCardPaymentBody,
   createOrderReference,
-  getMercadoPagoConfig,
+  isValidCardPublicKey,
   payWithCard,
   saveOrderReference,
 } from "@/lib/checkout";
@@ -24,6 +25,10 @@ type CardPaymentFormProps = {
   onComplete?: () => void;
 };
 
+function formatCardNumber(number: string) {
+  return number.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+}
+
 export default function CardPaymentForm({
   checkout,
   onBack,
@@ -31,25 +36,30 @@ export default function CardPaymentForm({
 }: CardPaymentFormProps) {
   const formId = useId().replace(/:/g, "");
   const { items, total, clearCart } = useCart();
+  const { config, cardPublicKey, ready, loading: configLoading } =
+    useMercadoPago();
   const router = useRouter();
-  const [sdkReady, setSdkReady] = useState(false);
-  const [publicKey, setPublicKey] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const cardFormRef = useRef<MercadoPagoCardForm | null>(null);
   const initialized = useRef(false);
 
-  useEffect(() => {
-    getMercadoPagoConfig().then((config) => {
-      if (config?.public_key) setPublicKey(config.public_key);
-    });
-  }, []);
+  const testCard = config?.test_card;
+  const invalidKey = !isValidCardPublicKey(cardPublicKey);
+  const payerEmail = checkout.payer.email.trim();
+  const cardholderName = testCard
+    ? testCard.holder_name
+    : `${checkout.payer.name} ${checkout.payer.surname}`.trim();
 
   useEffect(() => {
-    if (!sdkReady || !publicKey || initialized.current || items.length === 0)
-      return;
+    initialized.current = false;
+    cardFormRef.current = null;
+  }, [formId, cardPublicKey, total]);
 
-    const mp = new window.MercadoPago(publicKey, { locale: "es-CL" });
+  useEffect(() => {
+    if (!ready || initialized.current || items.length === 0) return;
+
+    const mp = new window.MercadoPago(cardPublicKey, { locale: "es-CL" });
 
     cardFormRef.current = mp.cardForm({
       amount: String(total),
@@ -86,7 +96,7 @@ export default function CardPaymentForm({
         },
         identificationNumber: {
           id: `${formId}__identificationNumber`,
-          placeholder: "RUT (12345678-9)",
+          placeholder: "Documento",
         },
         cardholderEmail: {
           id: `${formId}__cardholderEmail`,
@@ -112,7 +122,7 @@ export default function CardPaymentForm({
               .join(", ")
               .slice(0, 200);
 
-            const result = await payWithCard({
+            const body = buildCardPaymentBody(checkout, {
               amount: total,
               token: data.token,
               payment_method_id: data.paymentMethodId,
@@ -120,26 +130,24 @@ export default function CardPaymentForm({
               issuer_id: data.issuerId ? Number(data.issuerId) : undefined,
               description,
               external_reference: ref,
-              currency_id: "CLP",
-              payer: {
-                email: checkout.payer.email,
-                name: checkout.payer.name,
-                surname: checkout.payer.surname,
-                identification_type: data.identificationType || "RUT",
-                identification_number: data.identificationNumber,
-              },
+              identification_type:
+                data.identificationType || testCard?.identification_type,
+              identification_number:
+                data.identificationNumber || testCard?.identification_number,
             });
 
-            saveOrderReference(ref);
+            const result = await payWithCard(body);
+            const orderRef = result.external_reference ?? ref;
+            saveOrderReference(orderRef);
             onComplete?.();
 
             if (result.status === "approved") {
               clearCart();
-              router.push(`/pago/exito?ref=${ref}`);
+              router.push(`/pago/exito?ref=${orderRef}`);
             } else if (result.status === "pending") {
-              router.push(`/pago/pendiente?ref=${ref}`);
+              router.push(`/pago/pendiente?ref=${orderRef}`);
             } else {
-              router.push(`/pago/error?ref=${ref}`);
+              router.push(`/pago/error?ref=${orderRef}`);
             }
           } catch (err) {
             setError(
@@ -154,20 +162,29 @@ export default function CardPaymentForm({
     const emailInput = document.getElementById(
       `${formId}__cardholderEmail`,
     ) as HTMLInputElement | null;
-    if (emailInput) emailInput.value = checkout.payer.email;
+    if (emailInput) emailInput.value = payerEmail;
 
     const nameInput = document.getElementById(
       `${formId}__cardholderName`,
     ) as HTMLInputElement | null;
-    if (nameInput) {
-      nameInput.value =
-        `${checkout.payer.name} ${checkout.payer.surname}`.trim();
+    if (nameInput) nameInput.value = cardholderName;
+
+    const idNumberInput = document.getElementById(
+      `${formId}__identificationNumber`,
+    ) as HTMLInputElement | null;
+    if (idNumberInput && testCard?.identification_number) {
+      idNumberInput.value = testCard.identification_number;
     }
 
     initialized.current = true;
+
+    return () => {
+      initialized.current = false;
+      cardFormRef.current = null;
+    };
   }, [
-    sdkReady,
-    publicKey,
+    ready,
+    cardPublicKey,
     total,
     items,
     checkout,
@@ -175,15 +192,36 @@ export default function CardPaymentForm({
     router,
     clearCart,
     onComplete,
+    payerEmail,
+    cardholderName,
+    testCard,
   ]);
 
+  if (configLoading) {
+    return (
+      <p className="text-center text-xs text-bruma-mist">
+        Cargando pasarela de pago...
+      </p>
+    );
+  }
+
   return (
-    <>
-      <Script
-        src="https://sdk.mercadopago.com/js/v2"
-        strategy="afterInteractive"
-        onLoad={() => setSdkReady(true)}
-      />
+    <div className="space-y-3">
+      {testCard && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Tarjeta de prueba: {formatCardNumber(testCard.number)} · CVV{" "}
+          {testCard.cvv} · vence {testCard.expiration} · titular{" "}
+          {testCard.holder_name} · email distinto al de tu cuenta MP
+        </div>
+      )}
+
+      {invalidKey && (
+        <p className="text-center text-xs text-red-500">
+          No se pudo cargar public_key APP_USR. Revisa GET /mercadopago/config en
+          el backend.
+        </p>
+      )}
+
       <form id={formId} className="space-y-3">
         <div>
           <label className="mb-1 block text-xs text-bruma-mist">
@@ -234,11 +272,13 @@ export default function CardPaymentForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-bruma-mist">RUT</label>
+            <label className="mb-1 block text-xs text-bruma-mist">
+              Documento
+            </label>
             <input
               id={`${formId}__identificationNumber`}
               type="text"
-              placeholder="12345678-9"
+              placeholder="123456789"
               className={fieldClass}
             />
           </div>
@@ -246,16 +286,10 @@ export default function CardPaymentForm({
         <input
           id={`${formId}__cardholderEmail`}
           type="hidden"
-          defaultValue={checkout.payer.email}
+          defaultValue={payerEmail}
         />
 
         {error && <p className="text-center text-xs text-red-500">{error}</p>}
-
-        {!publicKey && sdkReady && (
-          <p className="text-center text-xs text-red-500">
-            No se pudo cargar la configuración de pago
-          </p>
-        )}
 
         <div className="flex gap-2 pt-1">
           {onBack && (
@@ -270,13 +304,13 @@ export default function CardPaymentForm({
           )}
           <button
             type="submit"
-            disabled={loading || !publicKey}
+            disabled={loading || !ready}
             className="flex min-h-[48px] flex-1 items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
           >
             {loading ? "Procesando..." : `Pagar ${formatCLP(total)}`}
           </button>
         </div>
       </form>
-    </>
+    </div>
   );
 }

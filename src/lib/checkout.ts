@@ -14,6 +14,15 @@ export function createOrderReference() {
   return `orden-${Date.now()}`;
 }
 
+export function getCardPublicKey(config: MercadoPagoConfig | null): string {
+  if (!config?.public_key) return "";
+  return config.public_key;
+}
+
+export function isValidCardPublicKey(key: string) {
+  return key.startsWith("APP_USR-");
+}
+
 export function normalizeChilePhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("569") && digits.length === 11) return `+${digits}`;
@@ -42,6 +51,17 @@ export function saveOrderReference(ref: string) {
   localStorage.setItem(ORDER_KEY, ref);
 }
 
+function parseApiError(err: Record<string, unknown>): string {
+  const raw = err.message;
+  if (Array.isArray(raw)) return raw.join(", ");
+  if (typeof raw === "string") return raw;
+  if (raw && typeof raw === "object" && "message" in raw) {
+    const nested = (raw as { message?: unknown }).message;
+    if (typeof nested === "string") return nested;
+  }
+  return "Error al procesar el pago";
+}
+
 export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> {
   try {
     const res = await fetch(`${API_URL}/mercadopago/config`, {
@@ -65,10 +85,7 @@ export async function payWithCard(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    const message = Array.isArray(err.message)
-      ? err.message.join(", ")
-      : err.message;
-    throw new Error(message ?? "Error al procesar el pago con tarjeta");
+    throw new Error(parseApiError(err));
   }
 
   return res.json();
@@ -78,11 +95,65 @@ export async function getPaymentByReference(
   reference: string,
 ): Promise<Payment | null> {
   const res = await fetch(
-    `${API_URL}/mercadopago/payments/reference/${reference}`,
+    `${API_URL}/mercadopago/payments/reference/${encodeURIComponent(reference)}`,
     { cache: "no-store" },
   );
   if (!res.ok) return null;
   return res.json();
+}
+
+export function buildCardPaymentBody(
+  checkout: CheckoutData,
+  payment: {
+    amount: number;
+    token: string;
+    payment_method_id: string;
+    installments: number;
+    issuer_id?: number;
+    description: string;
+    external_reference: string;
+    identification_type?: string;
+    identification_number?: string;
+  },
+): CardPaymentBody {
+  const body: CardPaymentBody = {
+    amount: payment.amount,
+    token: payment.token,
+    payment_method_id: payment.payment_method_id,
+    installments: payment.installments,
+    description: payment.description,
+    external_reference: payment.external_reference,
+    payer: {
+      email: checkout.payer.email.trim(),
+      name: checkout.payer.name.trim(),
+      surname: checkout.payer.surname.trim(),
+      identification_type: payment.identification_type || "Otro",
+      identification_number: payment.identification_number || "123456789",
+    },
+    shipping: {
+      street: checkout.shipping.street.trim(),
+      number: checkout.shipping.number.trim(),
+      city: checkout.shipping.city.trim(),
+      region: checkout.shipping.region.trim(),
+      country: checkout.shipping.country.trim() || "CL",
+      ...(checkout.shipping.apartment?.trim()
+        ? { apartment: checkout.shipping.apartment.trim() }
+        : {}),
+      ...(checkout.shipping.postal_code?.trim()
+        ? { postal_code: checkout.shipping.postal_code.trim() }
+        : {}),
+    },
+  };
+
+  if (checkout.payer.phone?.trim()) {
+    body.payer.phone = normalizeChilePhone(checkout.payer.phone);
+  }
+
+  if (payment.issuer_id) {
+    body.issuer_id = payment.issuer_id;
+  }
+
+  return body;
 }
 
 export function validateCheckout(checkout: CheckoutData): string | null {
