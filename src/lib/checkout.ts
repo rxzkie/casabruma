@@ -1,9 +1,10 @@
 import { API_URL } from "@/lib/config";
-import type { CartItem } from "@/types/cart";
 import type {
+  CardPaymentBody,
+  CardPaymentResponse,
   CheckoutData,
+  MercadoPagoConfig,
   Payment,
-  CheckoutResponse,
 } from "@/types/payment";
 
 const CHECKOUT_KEY = "casa-bruma-checkout";
@@ -41,52 +42,25 @@ export function saveOrderReference(ref: string) {
   localStorage.setItem(ORDER_KEY, ref);
 }
 
-export async function createCheckout(
-  items: CartItem[],
-  checkout: CheckoutData,
-  origin: string,
-): Promise<CheckoutResponse> {
-  const orderRef = createOrderReference();
-
-  const payer: Record<string, string> = {
-    name: checkout.payer.name.trim(),
-    surname: checkout.payer.surname.trim(),
-    email: checkout.payer.email.trim(),
-  };
-
-  if (checkout.payer.phone?.trim()) {
-    payer.phone = normalizeChilePhone(checkout.payer.phone);
+export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> {
+  try {
+    const res = await fetch(`${API_URL}/mercadopago/config`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
   }
+}
 
-  const shipping = {
-    street: checkout.shipping.street.trim(),
-    number: checkout.shipping.number.trim(),
-    city: checkout.shipping.city.trim(),
-    region: checkout.shipping.region.trim(),
-    country: checkout.shipping.country.trim() || "CL",
-  };
-
-  const res = await fetch(`${API_URL}/mercadopago/checkout`, {
+export async function payWithCard(
+  body: CardPaymentBody,
+): Promise<CardPaymentResponse> {
+  const res = await fetch(`${API_URL}/mercadopago/payments/card`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      items: items.map((item) => ({
-        id: item.id,
-        title: item.name,
-        quantity: item.quantity,
-        unit_price: item.price,
-        currency_id: "CLP",
-        ...(item.image_url ? { picture_url: item.image_url } : {}),
-      })),
-      payer,
-      shipping,
-      external_reference: orderRef,
-      back_urls: {
-        success: `${origin}/pago/exito?ref=${orderRef}`,
-        failure: `${origin}/pago/error?ref=${orderRef}`,
-        pending: `${origin}/pago/pendiente?ref=${orderRef}`,
-      },
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -94,13 +68,10 @@ export async function createCheckout(
     const message = Array.isArray(err.message)
       ? err.message.join(", ")
       : err.message;
-    throw new Error(message ?? "Error al crear el pago");
+    throw new Error(message ?? "Error al procesar el pago con tarjeta");
   }
 
-  const data: CheckoutResponse = await res.json();
-  saveCheckout(checkout);
-  saveOrderReference(data.external_reference ?? orderRef);
-  return data;
+  return res.json();
 }
 
 export async function getPaymentByReference(
@@ -112,11 +83,6 @@ export async function getPaymentByReference(
   );
   if (!res.ok) return null;
   return res.json();
-}
-
-export function redirectToCheckout(data: CheckoutResponse) {
-  if (!data.checkout_url) throw new Error("No se recibió URL de pago");
-  window.location.href = data.checkout_url;
 }
 
 export function validateCheckout(checkout: CheckoutData): string | null {

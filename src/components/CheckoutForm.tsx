@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CardPaymentForm from "@/components/CardPaymentForm";
 import { useCart } from "@/context/CartContext";
 import {
-  createCheckout,
   getSavedCheckout,
-  redirectToCheckout,
   saveCheckout,
   validateCheckout,
 } from "@/lib/checkout";
@@ -24,9 +23,9 @@ type CheckoutFormProps = {
 };
 
 export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
-  const { items, total } = useCart();
+  const { total } = useCart();
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"details" | "card">("details");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -51,7 +50,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
     }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleContinue(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -61,20 +60,30 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
       return;
     }
 
-    setLoading(true);
-    try {
-      saveCheckout(form);
-      const data = await createCheckout(items, form, window.location.origin);
-      onContinue?.();
-      redirectToCheckout(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al procesar el pago");
-      setLoading(false);
-    }
+    saveCheckout(form);
+    setStep("card");
+  }
+
+  if (step === "card") {
+    return (
+      <div className="space-y-4">
+        <p className="text-xs uppercase tracking-widest text-bruma-mist">
+          Pago con tarjeta
+        </p>
+        <p className="text-xs text-bruma-deep/55">
+          Paga con crédito o débito sin cuenta de Mercado Pago.
+        </p>
+        <CardPaymentForm
+          checkout={form}
+          onBack={() => setStep("details")}
+          onComplete={onContinue}
+        />
+      </div>
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleContinue} className="space-y-4">
       <div>
         <p className="mb-2 text-xs uppercase tracking-widest text-bruma-mist">
           Datos personales
@@ -169,10 +178,9 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
 
       <button
         type="submit"
-        disabled={loading}
-        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
+        className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85"
       >
-        {loading ? "Redirigiendo..." : `Pagar ${formatCLP(total)}`}
+        Continuar al pago · {formatCLP(total)}
       </button>
     </form>
   );

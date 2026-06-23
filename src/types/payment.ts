@@ -25,9 +25,36 @@ export type Payment = {
   updated_at?: string;
 };
 
-export type CheckoutResponse = {
-  preference_id: string;
-  checkout_url: string;
+export type MercadoPagoConfig = {
+  public_key: string;
+  sandbox: boolean;
+  country: string;
+  currency: string;
+  sdk_url?: string;
+};
+
+export type CardPaymentBody = {
+  amount: number;
+  token: string;
+  payment_method_id: string;
+  installments: number;
+  issuer_id?: number;
+  description: string;
+  external_reference: string;
+  currency_id: string;
+  payer: {
+    email: string;
+    name?: string;
+    surname?: string;
+    identification_type?: string;
+    identification_number?: string;
+  };
+};
+
+export type CardPaymentResponse = {
+  payment_id: number;
+  status: "approved" | "pending" | "rejected";
+  status_detail: string;
   external_reference: string;
 };
 
