@@ -66,17 +66,22 @@ export default function CardPaymentForm({
     () => normalizeTestCard(config?.test_card),
     [config?.test_card],
   );
+  const isTestMode = Boolean(config?.sandbox || testCard);
   const invalidKey = !isValidCardPublicKey(cardPublicKey);
   const payerEmail = checkout.payer.email.trim();
-  const mpEmail = testCard
+  const mpEmail = isTestMode
     ? config?.test_buyer_email ?? MP_TEST_BUYER_EMAIL
     : payerEmail;
-  const cardholderName = testCard
-    ? testCard.holder_name
+  const cardholderName = isTestMode
+    ? testCard?.holder_name ?? "APRO"
     : `${checkout.payer.name} ${checkout.payer.surname}`.trim();
 
   const testCardRef = useRef(testCard);
+  const isTestModeRef = useRef(isTestMode);
+  const configRef = useRef(config);
   testCardRef.current = testCard;
+  isTestModeRef.current = isTestMode;
+  configRef.current = config;
 
   useEffect(() => {
     if (!ready || invalidKey) return;
@@ -165,8 +170,8 @@ export default function CardPaymentForm({
             const idTypeSelect = document.getElementById(
               `${FORM_ID}__identificationType`,
             ) as HTMLSelectElement | null;
-            if (idTypeSelect && testCardRef.current?.identification_type) {
-              const target = testCardRef.current.identification_type;
+            if (idTypeSelect && (testCardRef.current?.identification_type || isTestModeRef.current)) {
+              const target = testCardRef.current?.identification_type || "Otro";
               for (const option of Array.from(idTypeSelect.options)) {
                 if (option.value === target || option.text === target) {
                   idTypeSelect.value = option.value;
@@ -183,6 +188,7 @@ export default function CardPaymentForm({
             const currentCheckout = checkoutRef.current;
             const currentItems = itemsRef.current;
             const currentTestCard = testCardRef.current;
+            const useTestMode = isTestModeRef.current;
 
             try {
               await new Promise((resolve) => window.setTimeout(resolve, 0));
@@ -207,11 +213,11 @@ export default function CardPaymentForm({
                 issuer_id: data.issuerId ? Number(data.issuerId) : undefined,
                 description,
                 external_reference: ref,
-                testMode: Boolean(currentTestCard),
-                identification_type: currentTestCard
+                testMode: useTestMode,
+                identification_type: useTestMode
                   ? "Otro"
                   : data.identificationType,
-                identification_number: currentTestCard
+                identification_number: useTestMode
                   ? "123456789"
                   : data.identificationNumber,
                 items: currentItems.map((item) => ({
@@ -266,11 +272,12 @@ export default function CardPaymentForm({
 
   return (
     <div className="space-y-3">
-      {testCard && (
+      {isTestMode && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Tarjeta de prueba: {formatCardNumber(testCard.number)} · CVV{" "}
-          {testCard.cvv} · vence {testCard.expiration} · titular{" "}
-          {testCard.holder_name} · doc. Otro / 123456789 · email{" "}
+          Modo prueba activo · Tarjeta:{" "}
+          {formatCardNumber(testCard?.number ?? "4168818844447115")} · CVV{" "}
+          {testCard?.cvv ?? "123"} · vence {testCard?.expiration ?? "11/30"} ·
+          titular APRO · doc. Otro / 123456789 · email{" "}
           {config?.test_buyer_email ?? MP_TEST_BUYER_EMAIL}
         </div>
       )}
@@ -307,9 +314,9 @@ export default function CardPaymentForm({
           <input
             id={`${FORM_ID}__cardholderName`}
             type="text"
-            readOnly={Boolean(testCard)}
+            readOnly={isTestMode}
             defaultValue={cardholderName}
-            className={`${fieldClass}${testCard ? " bg-bruma-sand/20" : ""}`}
+            className={`${fieldClass}${isTestMode ? " bg-bruma-sand/20" : ""}`}
           />
         </div>
         <div>
@@ -349,10 +356,10 @@ export default function CardPaymentForm({
             <input
               id={`${FORM_ID}__identificationNumber`}
               type="text"
-              readOnly={Boolean(testCard)}
-              defaultValue={testCard?.identification_number ?? ""}
+              readOnly={isTestMode}
+              defaultValue={testCard?.identification_number ?? "123456789"}
               placeholder="123456789"
-              className={`${fieldClass}${testCard ? " bg-bruma-sand/20" : ""}`}
+              className={`${fieldClass}${isTestMode ? " bg-bruma-sand/20" : ""}`}
             />
           </div>
         </div>

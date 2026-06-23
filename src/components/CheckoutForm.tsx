@@ -99,8 +99,8 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
           Pago con tarjeta
         </p>
         <p className="text-xs leading-relaxed text-bruma-deep/55">
-          Paga con débito o crédito aquí mismo, sin cuenta de Mercado Pago. Usa
-          Chrome si el formulario no carga.
+          Modo prueba: usa los datos del banner amarillo. El email de contacto
+          puede ser cualquiera; el de la tarjeta será test@testuser.com.
         </p>
         <CardPaymentForm
           checkout={form}
