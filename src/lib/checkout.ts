@@ -1,6 +1,8 @@
 import { API_URL } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
 import type {
+  CardPaymentBody,
+  CardPaymentResponse,
   CheckoutData,
   MercadoPagoConfig,
   Payment,
@@ -23,28 +25,14 @@ export function normalizeChilePhone(phone: string): string {
   return phone.trim();
 }
 
-export function resolveCheckoutUrl(
-  data: PreferenceResponse,
-  config: MercadoPagoConfig | null,
-): string {
-  const isLogin = (url: string) =>
-    /mercadolibre\.com.*\/login|\/lgz\/msl\/login/i.test(url);
-
-  const production = [data.init_point, data.checkout_url];
-  const sandbox = [
-    data.sandbox_init_point,
-    data.init_point,
-    data.checkout_url,
-  ];
-
-  const candidates = config?.sandbox ? sandbox : production;
-  const valid = candidates.find((url) => url && !isLogin(url));
-
-  if (valid) return valid;
-
-  const fallback = candidates.find(Boolean);
-  if (!fallback) throw new Error("No se recibió URL de pago");
-  return fallback;
+export function resolveCheckoutUrl(data: PreferenceResponse): string {
+  const url = data.checkout_url;
+  if (url && !/mercadolibre\.com.*\/login|\/lgz\/msl\/login/i.test(url)) {
+    return url;
+  }
+  throw new Error(
+    "URL de checkout inválida. Verifica las credenciales del backend.",
+  );
 }
 
 export function getSavedCheckout(): CheckoutData | null {
@@ -109,6 +97,7 @@ export async function createCheckoutPreference(
       },
       shipping,
       external_reference: orderRef,
+      statement_descriptor: "CASA BRUMA",
       back_urls: {
         success: `${origin}/pago-exitoso?ref=${orderRef}`,
         failure: `${origin}/pago-fallido?ref=${orderRef}`,
@@ -143,9 +132,28 @@ export async function getPaymentByReference(
 }
 
 export async function redirectToMercadoPago(data: PreferenceResponse) {
-  const config = await getMercadoPagoConfig();
-  const url = resolveCheckoutUrl(data, config);
+  const url = resolveCheckoutUrl(data);
   window.location.href = url;
+}
+
+export async function payWithCard(
+  body: CardPaymentBody,
+): Promise<CardPaymentResponse> {
+  const res = await fetch(`${API_URL}/mercadopago/payments/card`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const message = Array.isArray(err.message)
+      ? err.message.join(", ")
+      : err.message;
+    throw new Error(message ?? "Error al procesar el pago con tarjeta");
+  }
+
+  return res.json();
 }
 
 export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> {
