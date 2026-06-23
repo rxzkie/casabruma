@@ -7,7 +7,8 @@ const REJECTION_MESSAGES: Record<string, string> = {
   cc_rejected_insufficient_amount: "Fondos insuficientes.",
   cc_rejected_other_reason:
     "Tarjeta rechazada. En prueba usa titular APRO, doc. Otro y email distinto al de tu cuenta MP.",
-  cc_rejected_high_risk: "Pago rechazado por riesgo.",
+  cc_rejected_high_risk:
+    "Rechazado por antifraude. En prueba usa titular APRO, email test@testuser.com, doc. Otro y vencimiento 11/30.",
 };
 
 export function getRejectionMessage(statusDetail?: string) {

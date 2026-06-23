@@ -12,6 +12,8 @@ import {
   saveOrderReference,
 } from "@/lib/checkout";
 import { getRejectionMessage } from "@/lib/mp-errors";
+import { formatCLP } from "@/lib/format";
+import { MP_TEST_BUYER_EMAIL } from "@/types/payment";
 import type { CheckoutData, MercadoPagoTestCard } from "@/types/payment";
 
 const FORM_ID = "bruma-card-payment";
@@ -66,6 +68,9 @@ export default function CardPaymentForm({
   );
   const invalidKey = !isValidCardPublicKey(cardPublicKey);
   const payerEmail = checkout.payer.email.trim();
+  const mpEmail = testCard
+    ? config?.test_buyer_email ?? MP_TEST_BUYER_EMAIL
+    : payerEmail;
   const cardholderName = testCard
     ? testCard.holder_name
     : `${checkout.payer.name} ${checkout.payer.surname}`.trim();
@@ -77,7 +82,7 @@ export default function CardPaymentForm({
     if (!ready || invalidKey) return;
 
     const mountId = ++mountIdRef.current;
-    const email = payerEmail;
+    const email = mpEmail;
     const holder = cardholderName;
     setFormMounted(false);
     setError("");
@@ -195,6 +200,12 @@ export default function CardPaymentForm({
                 identification_number: currentTestCard
                   ? "123456789"
                   : data.identificationNumber,
+                items: currentItems.map((item) => ({
+                  id: item.id,
+                  title: item.name,
+                  quantity: item.quantity,
+                  unit_price: item.price,
+                })),
               });
 
               const result = await payWithCard(body);
@@ -229,7 +240,7 @@ export default function CardPaymentForm({
       window.clearTimeout(timer);
       cardFormRef.current = null;
     };
-  }, [ready, invalidKey, cardPublicKey, total, payerEmail, cardholderName, router, clearCart]);
+  }, [ready, invalidKey, cardPublicKey, total, mpEmail, cardholderName, router, clearCart]);
 
   if (configLoading) {
     return (
@@ -245,7 +256,8 @@ export default function CardPaymentForm({
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Tarjeta de prueba: {formatCardNumber(testCard.number)} · CVV{" "}
           {testCard.cvv} · vence {testCard.expiration} · titular{" "}
-          {testCard.holder_name} · doc. Otro / 123456789
+          {testCard.holder_name} · doc. Otro / 123456789 · email{" "}
+          {config?.test_buyer_email ?? MP_TEST_BUYER_EMAIL}
         </div>
       )}
 
@@ -292,7 +304,7 @@ export default function CardPaymentForm({
             id={`${FORM_ID}__cardholderEmail`}
             type="email"
             readOnly
-            defaultValue={payerEmail}
+            defaultValue={mpEmail}
             className={`${fieldClass} bg-bruma-sand/20`}
           />
         </div>

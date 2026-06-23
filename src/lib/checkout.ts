@@ -1,11 +1,13 @@
 import { API_URL } from "@/lib/config";
 import type {
   CardPaymentBody,
+  CardPaymentItem,
   CardPaymentResponse,
   CheckoutData,
   MercadoPagoConfig,
   Payment,
 } from "@/types/payment";
+import { MP_TEST_BUYER_EMAIL } from "@/types/payment";
 
 const CHECKOUT_KEY = "casa-bruma-checkout";
 const ORDER_KEY = "lastOrderRef";
@@ -115,12 +117,12 @@ export function buildCardPaymentBody(
     identification_type?: string;
     identification_number?: string;
     testMode?: boolean;
+    items?: CardPaymentItem[];
   },
 ): CardPaymentBody {
-  const idType = payment.testMode
-    ? "Otro"
-    : payment.identification_type || "Otro";
-  const idNumber = payment.testMode
+  const testMode = Boolean(payment.testMode);
+  const idType = testMode ? "Otro" : payment.identification_type || "Otro";
+  const idNumber = testMode
     ? "123456789"
     : payment.identification_number || "123456789";
 
@@ -131,10 +133,14 @@ export function buildCardPaymentBody(
     installments: payment.installments,
     description: payment.description,
     external_reference: payment.external_reference,
+    ...(testMode ? { test_mode: true } : {}),
+    ...(payment.items?.length ? { items: payment.items } : {}),
     payer: {
-      email: checkout.payer.email.trim(),
-      name: checkout.payer.name.trim(),
-      surname: checkout.payer.surname.trim(),
+      email: testMode
+        ? MP_TEST_BUYER_EMAIL
+        : checkout.payer.email.trim(),
+      name: testMode ? "APRO" : checkout.payer.name.trim(),
+      surname: testMode ? "TEST" : checkout.payer.surname.trim(),
       identification_type: idType,
       identification_number: idNumber,
     },
