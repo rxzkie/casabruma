@@ -167,9 +167,13 @@ export default function PaymentBrickForm({
                 })();
               });
             },
-            onError: (err: { message?: string }) => {
+            onError: (err: { message?: string; type?: string }) => {
               if (mountId !== mountIdRef.current) return;
-              setError(err.message || "Error al cargar el formulario de pago");
+              setBrickReady(false);
+              setError(
+                err.message ||
+                  "No se pudo cargar el pago. Usa Chrome o el botón Ir a Mercado Pago.",
+              );
             },
           },
         });
@@ -180,9 +184,14 @@ export default function PaymentBrickForm({
         }
 
         controllerRef.current = controller;
-      } catch {
+      } catch (err) {
         if (mountId === mountIdRef.current) {
-          setError("No se pudo cargar el formulario de pago");
+          setBrickReady(false);
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se pudo cargar el formulario. Usa Chrome o Ir a Mercado Pago.",
+          );
         }
       }
     }, 200);
