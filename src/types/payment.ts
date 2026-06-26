@@ -1,68 +1,8 @@
-export type Payment = {
-  id: string;
-  mp_payment_id?: string;
-  preference_id?: string;
-  external_reference: string;
-  amount: string;
-  currency_id?: string;
-  status: "pending" | "approved" | "rejected" | "cancelled" | "refunded";
-  status_detail?: string;
-  payment_method_id?: string;
-  payment_type_id?: string;
-  payer_email?: string;
-  payer_name?: string;
-  payer_surname?: string;
-  payer_phone?: string;
-  shipping_street?: string;
-  shipping_number?: string;
-  shipping_apartment?: string;
-  shipping_city?: string;
-  shipping_region?: string;
-  shipping_postal_code?: string;
-  shipping_country?: string;
-  description?: string;
-  created_at?: string;
-  updated_at?: string;
-};
+export type OrderStatus = "COMPLETED" | "PENDING" | "FAILED";
 
-export type MercadoPagoConfig = {
-  integration: string;
-  payment_flow: string;
-  mode: "production";
-  country: string;
-  currency: string;
-  credentials_ok?: boolean;
-  application_id?: string | null;
-  checkout_base_url?: string;
-  endpoints: {
-    checkout: string;
-    status: string;
-  };
-};
-
-export type CheckoutProItem = {
-  id: string;
-  title: string;
+export type CheckoutItem = {
+  productId: string;
   quantity: number;
-  unit_price: number;
-  description?: string;
-  picture_url?: string;
-  category_id?: string;
-  currency_id?: string;
-};
-
-export type CheckoutProBody = {
-  items: CheckoutProItem[];
-  payer: CheckoutPayer;
-  shipping: CheckoutShipping;
-  external_reference: string;
-  statement_descriptor?: string;
-};
-
-export type CheckoutProResponse = {
-  preference_id: string;
-  checkout_url: string;
-  external_reference: string;
 };
 
 export type CheckoutPayer = {
@@ -79,12 +19,36 @@ export type CheckoutShipping = {
   city: string;
   region: string;
   postal_code?: string;
-  country: string;
+};
+
+export type CheckoutBody = {
+  items: CheckoutItem[];
+  payer: CheckoutPayer;
+  shipping: CheckoutShipping;
+};
+
+export type CheckoutResponse = {
+  preferenceId: string;
+  initPoint?: string;
+  sandboxInitPoint?: string;
+  externalReference: string;
+};
+
+export type PaymentCheck = {
+  externalReference: string;
+  status: OrderStatus;
+  mpStatus?: string;
+  amount: number | null;
+  currency: string;
+  preferenceId?: string;
+  mpPaymentId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type CheckoutData = {
   payer: CheckoutPayer;
-  shipping: CheckoutShipping;
+  shipping: CheckoutShipping & { country: string };
 };
 
 export const CHILE_REGIONS = [

@@ -1,19 +1,14 @@
-import { API_URL } from "@/lib/config";
+import { API_URL, isMpSandbox } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
 import type {
+  CheckoutBody,
   CheckoutData,
-  CheckoutProBody,
-  CheckoutProResponse,
-  MercadoPagoConfig,
-  Payment,
+  CheckoutResponse,
+  PaymentCheck,
 } from "@/types/payment";
 
 const CHECKOUT_KEY = "casa-bruma-checkout";
 const ORDER_KEY = "lastOrderRef";
-
-export function createOrderReference() {
-  return `orden-${Date.now()}`;
-}
 
 export function normalizeChilePhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -54,31 +49,14 @@ function parseApiError(err: Record<string, unknown>): string {
   return "Error al procesar el pago";
 }
 
-export async function getMercadoPagoConfig(): Promise<MercadoPagoConfig | null> {
-  try {
-    const res = await fetch(`${API_URL}/mercadopago/config`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-export function buildCheckoutProBody(
+export function buildCheckoutBody(
   checkout: CheckoutData,
   items: CartItem[],
-  externalReference: string,
-): CheckoutProBody {
+): CheckoutBody {
   return {
     items: items.map((item) => ({
-      id: item.id,
-      title: item.name,
+      productId: item.id,
       quantity: item.quantity,
-      unit_price: item.price,
-      picture_url: item.image_url || undefined,
-      currency_id: "CLP",
     })),
     payer: {
       name: checkout.payer.name.trim(),
@@ -93,7 +71,6 @@ export function buildCheckoutProBody(
       number: checkout.shipping.number.trim(),
       city: checkout.shipping.city.trim(),
       region: checkout.shipping.region.trim(),
-      country: checkout.shipping.country.trim() || "CL",
       ...(checkout.shipping.apartment?.trim()
         ? { apartment: checkout.shipping.apartment.trim() }
         : {}),
@@ -101,15 +78,35 @@ export function buildCheckoutProBody(
         ? { postal_code: checkout.shipping.postal_code.trim() }
         : {}),
     },
-    external_reference: externalReference,
-    statement_descriptor: "CASA BRUMA",
   };
 }
 
-export async function createCheckoutPro(
-  body: CheckoutProBody,
-): Promise<CheckoutProResponse> {
-  const res = await fetch(`${API_URL}/mercadopago/checkout`, {
+export function resolveCheckoutUrl(data: CheckoutResponse): string {
+  const sandbox = isMpSandbox();
+  const url = (
+    sandbox ? data.sandboxInitPoint : data.initPoint
+  )?.trim();
+
+  if (url) {
+    if (!sandbox && url.includes("sandbox.mercadopago")) {
+      throw new Error(
+        "Checkout en modo prueba. Usa NEXT_PUBLIC_MP_MODE=sandbox en desarrollo.",
+      );
+    }
+    return url;
+  }
+
+  const fallback = data.sandboxInitPoint?.trim() || data.initPoint?.trim() || "";
+  if (!fallback) {
+    throw new Error("Mercado Pago no devolvió URL de checkout");
+  }
+  return fallback;
+}
+
+export async function createCheckout(
+  body: CheckoutBody,
+): Promise<CheckoutResponse> {
+  const res = await fetch(`${API_URL}/payment/checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -120,24 +117,14 @@ export async function createCheckoutPro(
     throw new Error(parseApiError(err));
   }
 
-  const data: CheckoutProResponse = await res.json();
-
-  const url = data.checkout_url?.trim() || "";
-  if (!url) {
-    throw new Error("Mercado Pago no devolvió checkout_url");
-  }
-  if (url.includes("sandbox.mercadopago")) {
-    throw new Error("Checkout en modo prueba no permitido. Configura MP_SANDBOX=false en Render.");
-  }
-
-  return data;
+  return res.json();
 }
 
-export async function getPaymentByReference(
+export async function checkPayment(
   reference: string,
-): Promise<Payment | null> {
+): Promise<PaymentCheck | null> {
   const res = await fetch(
-    `${API_URL}/mercadopago/payments/reference/${encodeURIComponent(reference)}`,
+    `${API_URL}/payment/check/${encodeURIComponent(reference)}`,
     { cache: "no-store" },
   );
   if (!res.ok) return null;

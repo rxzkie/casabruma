@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { getPaymentByReference } from "@/lib/checkout";
+import { checkPayment } from "@/lib/checkout";
 import { formatCLP } from "@/lib/format";
 import { getRejectionMessage } from "@/lib/mp-errors";
-import type { Payment } from "@/types/payment";
+import type { OrderStatus, PaymentCheck } from "@/types/payment";
 
 type Variant = "success" | "failure" | "pending";
 
@@ -32,11 +32,23 @@ const content: Record<
   },
 };
 
+function statusLabel(status: OrderStatus) {
+  if (status === "COMPLETED") return "Completado";
+  if (status === "PENDING") return "Pendiente";
+  return "Fallido";
+}
+
+function variantFromStatus(status: OrderStatus): Variant {
+  if (status === "COMPLETED") return "success";
+  if (status === "PENDING") return "pending";
+  return "failure";
+}
+
 function PaymentResultInner({ variant }: { variant: Variant }) {
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref");
   const { clearCart } = useCart();
-  const [payment, setPayment] = useState<Payment | null>(null);
+  const [order, setOrder] = useState<PaymentCheck | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,22 +56,23 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
       setLoading(false);
       return;
     }
-    getPaymentByReference(ref).then((data) => {
-      setPayment(data);
-      if (data?.status === "approved") clearCart();
+    checkPayment(ref).then((data) => {
+      setOrder(data);
+      if (data?.status === "COMPLETED") clearCart();
       setLoading(false);
     });
   }, [ref, clearCart]);
 
-  const copy = content[variant];
+  const resolvedVariant = order ? variantFromStatus(order.status) : variant;
+  const copy = content[resolvedVariant];
 
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center px-4 py-16 text-center">
       <div
         className={`mb-6 flex h-16 w-16 items-center justify-center rounded-full text-2xl ${
-          variant === "success"
+          resolvedVariant === "success"
             ? "bg-green-100 text-green-600"
-            : variant === "failure"
+            : resolvedVariant === "failure"
               ? "bg-red-100 text-red-500"
               : "bg-amber-100 text-amber-600"
         }`}
@@ -73,83 +86,32 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
         <p className="mt-6 text-xs text-bruma-mist">Verificando pago...</p>
       )}
 
-      {!loading && payment && (
+      {!loading && order && (
         <div className="mt-8 w-full rounded-2xl border border-bruma-sand/80 bg-white p-6 text-left">
           <p className="text-xs uppercase tracking-widest text-bruma-mist">
             Detalle del pedido
           </p>
           <p className="mt-2 text-sm text-bruma-deep">
-            Orden: {payment.external_reference}
+            Orden: {order.externalReference}
           </p>
-          <p className="mt-1 text-sm text-bruma-deep">
-            Monto: {formatCLP(payment.amount)}
+          {order.amount != null && (
+            <p className="mt-1 text-sm text-bruma-deep">
+              Monto: {formatCLP(order.amount)}
+            </p>
+          )}
+          <p className="mt-1 text-sm text-bruma-deep/70">
+            Estado: {statusLabel(order.status)}
           </p>
-          <p className="mt-1 text-sm capitalize text-bruma-deep/70">
-            Estado: {payment.status}
-          </p>
-          {payment.status_detail && variant === "failure" && (
+          {order.mpStatus && resolvedVariant === "failure" && (
             <p className="mt-2 text-sm text-red-600">
-              {getRejectionMessage(payment.status_detail)}
+              {getRejectionMessage(order.mpStatus)}
             </p>
-          )}
-          {payment.description && (
-            <p className="mt-1 text-sm text-bruma-deep/70">
-              Producto: {payment.description}
-            </p>
-          )}
-
-          {(payment.payer_name || payment.payer_email) && (
-            <div className="mt-4 border-t border-bruma-sand/50 pt-4">
-              <p className="text-xs uppercase tracking-widest text-bruma-mist">
-                Cliente
-              </p>
-              {payment.payer_name && (
-                <p className="mt-2 text-sm text-bruma-deep">
-                  {payment.payer_name}
-                  {payment.payer_surname ? ` ${payment.payer_surname}` : ""}
-                </p>
-              )}
-              {payment.payer_email && (
-                <p className="mt-1 text-sm text-bruma-deep/70">
-                  {payment.payer_email}
-                </p>
-              )}
-              {payment.payer_phone && (
-                <p className="mt-1 text-sm text-bruma-deep/70">
-                  {payment.payer_phone}
-                </p>
-              )}
-            </div>
-          )}
-
-          {payment.shipping_street && (
-            <div className="mt-4 border-t border-bruma-sand/50 pt-4">
-              <p className="text-xs uppercase tracking-widest text-bruma-mist">
-                Envío
-              </p>
-              <p className="mt-2 text-sm text-bruma-deep">
-                {payment.shipping_street} {payment.shipping_number}
-                {payment.shipping_apartment
-                  ? `, ${payment.shipping_apartment}`
-                  : ""}
-              </p>
-              <p className="mt-1 text-sm text-bruma-deep/70">
-                {payment.shipping_city}, {payment.shipping_region}
-              </p>
-              {payment.shipping_postal_code && (
-                <p className="mt-1 text-sm text-bruma-deep/70">
-                  CP: {payment.shipping_postal_code}
-                </p>
-              )}
-            </div>
           )}
         </div>
       )}
 
-      {!loading && !payment && ref && (
-        <p className="mt-6 text-xs text-bruma-mist">
-          Referencia: {ref}
-        </p>
+      {!loading && !order && ref && (
+        <p className="mt-6 text-xs text-bruma-mist">Referencia: {ref}</p>
       )}
 
       <Link

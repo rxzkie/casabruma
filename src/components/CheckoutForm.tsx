@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { isMpSandbox } from "@/lib/config";
 import {
-  buildCheckoutProBody,
-  createCheckoutPro,
-  createOrderReference,
+  buildCheckoutBody,
+  createCheckout,
   getSavedCheckout,
+  resolveCheckoutUrl,
   saveCheckout,
   saveOrderReference,
   validateCheckout,
@@ -30,6 +31,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const isSandbox = isMpSandbox();
 
   useEffect(() => {
     const saved = getSavedCheckout();
@@ -72,12 +74,11 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
     setLoading(true);
 
     try {
-      const ref = createOrderReference();
-      const body = buildCheckoutProBody(form, items, ref);
-      const result = await createCheckoutPro(body);
-      saveOrderReference(result.external_reference ?? ref);
+      const body = buildCheckoutBody(form, items);
+      const result = await createCheckout(body);
+      saveOrderReference(result.externalReference);
       onContinue?.();
-      window.location.href = result.checkout_url;
+      window.location.href = resolveCheckoutUrl(result);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al iniciar el pago",
@@ -191,6 +192,12 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         Serás redirigido a Mercado Pago para pagar con tarjeta, transferencia u
         otros medios disponibles.
       </p>
+
+      {isSandbox && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Modo sandbox — NEXT_PUBLIC_MP_MODE=sandbox
+        </p>
+      )}
 
       {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
