@@ -82,14 +82,12 @@ export function buildCheckoutBody(
 }
 
 export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  const url = data.checkoutUrl?.trim();
-  if (!url) {
-    throw new Error("Mercado Pago no devolvió URL de checkout");
+  if (data.checkoutUrl?.trim()) return data.checkoutUrl.trim();
+  if (data.mode === "sandbox" && data.sandboxInitPoint?.trim()) {
+    return data.sandboxInitPoint.trim();
   }
-  if (url.includes("sandbox.mercadopago")) {
-    throw new Error("Checkout en modo prueba no permitido");
-  }
-  return url;
+  if (data.initPoint?.trim()) return data.initPoint.trim();
+  throw new Error("Mercado Pago no devolvió URL de checkout");
 }
 
 export async function createCheckout(
