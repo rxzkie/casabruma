@@ -1,4 +1,4 @@
-import { API_URL, isMpSandbox } from "@/lib/config";
+import { API_URL } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
 import type {
   CheckoutBody,
@@ -82,21 +82,11 @@ export function buildCheckoutBody(
 }
 
 export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  const sandbox = isMpSandbox();
-  const url = (
-    sandbox ? data.sandboxInitPoint : data.initPoint
-  )?.trim();
+  const url = data.checkoutUrl?.trim();
+  if (url) return url;
 
-  if (url) {
-    if (!sandbox && url.includes("sandbox.mercadopago")) {
-      throw new Error(
-        "Checkout en modo prueba. Usa NEXT_PUBLIC_MP_MODE=sandbox en desarrollo.",
-      );
-    }
-    return url;
-  }
-
-  const fallback = data.sandboxInitPoint?.trim() || data.initPoint?.trim() || "";
+  const fallback =
+    data.sandboxInitPoint?.trim() || data.initPoint?.trim() || "";
   if (!fallback) {
     throw new Error("Mercado Pago no devolvió URL de checkout");
   }
