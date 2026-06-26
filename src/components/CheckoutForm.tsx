@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { isMpSandbox } from "@/lib/config";
 import {
   buildCheckoutBody,
   createCheckout,
@@ -31,7 +30,6 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const isSandbox = isMpSandbox();
 
   useEffect(() => {
     const saved = getSavedCheckout();
@@ -192,12 +190,6 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         Serás redirigido a Mercado Pago para pagar con tarjeta, transferencia u
         otros medios disponibles.
       </p>
-
-      {isSandbox && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Modo sandbox — NEXT_PUBLIC_MP_MODE=sandbox
-        </p>
-      )}
 
       {error && <p className="text-center text-xs text-red-500">{error}</p>}
 

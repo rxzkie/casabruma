@@ -30,8 +30,6 @@ export type CheckoutBody = {
 export type CheckoutResponse = {
   preferenceId: string;
   checkoutUrl: string;
-  initPoint?: string;
-  sandboxInitPoint?: string;
   externalReference: string;
 };
 
