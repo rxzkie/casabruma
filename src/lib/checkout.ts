@@ -81,13 +81,54 @@ export function buildCheckoutBody(
   };
 }
 
-export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  if (data.checkoutUrl?.trim()) return data.checkoutUrl.trim();
-  if (data.mode === "sandbox" && data.sandboxInitPoint?.trim()) {
-    return data.sandboxInitPoint.trim();
+function isLoginUrl(url: string) {
+  const lower = url.toLowerCase();
+  if (lower.includes("mercadolibre")) return true;
+  if (lower.includes("/lgz/") || lower.includes("/msl/login")) return true;
+  return false;
+}
+
+function isValidCheckoutRedirectUrl(url: string) {
+  if (!url || isLoginUrl(url)) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("mercadopago.cl/checkout") ||
+    lower.includes("sandbox.mercadopago.cl/checkout")
+  );
+}
+
+function buildFallbackCheckoutUrl(data: CheckoutResponse) {
+  if (!data.preferenceId) {
+    throw new Error("Mercado Pago no devolvió preferenceId");
   }
-  if (data.initPoint?.trim()) return data.initPoint.trim();
-  throw new Error("Mercado Pago no devolvió URL de checkout");
+  const base =
+    data.mode === "sandbox"
+      ? "https://sandbox.mercadopago.cl/checkout/v1/redirect"
+      : "https://www.mercadopago.cl/checkout/v1/redirect";
+  return `${base}?pref_id=${data.preferenceId}`;
+}
+
+export function resolveCheckoutUrl(data: CheckoutResponse): string {
+  const candidates = [
+    data.checkoutUrl,
+    data.mode === "sandbox" ? data.sandboxInitPoint : data.initPoint,
+    data.mode === "sandbox" ? data.initPoint : data.sandboxInitPoint,
+  ].filter((url): url is string => Boolean(url?.trim()));
+
+  for (const url of candidates) {
+    const trimmed = url.trim();
+    if (isValidCheckoutRedirectUrl(trimmed)) {
+      console.info("[MP checkout] URL valida:", trimmed);
+      return trimmed;
+    }
+    if (isLoginUrl(trimmed)) {
+      console.warn("[MP checkout] URL de login rechazada:", trimmed);
+    }
+  }
+
+  const fallback = buildFallbackCheckoutUrl(data);
+  console.info("[MP checkout] usando fallback:", fallback, data);
+  return fallback;
 }
 
 export async function createCheckout(
@@ -104,7 +145,9 @@ export async function createCheckout(
     throw new Error(parseApiError(err));
   }
 
-  return res.json();
+  const data: CheckoutResponse = await res.json();
+  console.info("[MP checkout] respuesta backend:", data);
+  return data;
 }
 
 export async function checkPayment(
