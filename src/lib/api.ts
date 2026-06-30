@@ -26,7 +26,7 @@ export async function getProductBySlug(
   slug: string,
 ): Promise<ApiProduct | null> {
   const res = await fetch(`${API_URL}/products/slug/${slug}`, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (res.status === 404) return null;
