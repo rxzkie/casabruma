@@ -1,4 +1,5 @@
-import { API_URL } from "@/lib/config";
+import { API_URL, IS_MP_SANDBOX, MP_PUBLIC_KEY } from "@/lib/config";
+import { openMpCheckout } from "@/lib/mp-sdk";
 import type { CartItem } from "@/types/cart";
 import type {
   CheckoutBody,
@@ -87,19 +88,35 @@ export function getOrderReference(): string | null {
 }
 
 export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  if (data.mode === "production" && data.initPoint?.trim()) {
-    return data.initPoint.trim();
+  const url = IS_MP_SANDBOX ? data.sandboxInitPoint : data.initPoint;
+  if (!url?.trim()) {
+    throw new Error("Mercado Pago no devolvió URL de checkout");
   }
-  if (data.mode === "sandbox" && data.sandboxInitPoint?.trim()) {
-    return data.sandboxInitPoint.trim();
+  const trimmed = url.trim();
+  if (
+    trimmed.toLowerCase().includes("mercadolibre.com") &&
+    trimmed.toLowerCase().includes("login")
+  ) {
+    throw new Error(
+      "Mercado Pago devolvió login. Configura Checkout Pro y credenciales APP_USR en Render.",
+    );
   }
-  if (data.initPoint?.trim()) {
-    return data.initPoint.trim();
+  if (!trimmed.toLowerCase().includes("mercadopago")) {
+    throw new Error("URL de checkout inválida");
   }
-  if (data.sandboxInitPoint?.trim()) {
-    return data.sandboxInitPoint.trim();
+  return trimmed;
+}
+
+export async function redirectToMpCheckout(data: CheckoutResponse) {
+  if (MP_PUBLIC_KEY && data.preferenceId) {
+    try {
+      await openMpCheckout(data.preferenceId, MP_PUBLIC_KEY);
+      return;
+    } catch (err) {
+      console.warn("[MP checkout] SDK fallo, usando redirect:", err);
+    }
   }
-  throw new Error("Mercado Pago no devolvió URL de checkout");
+  window.location.href = resolveCheckoutUrl(data);
 }
 
 export async function createCheckout(
