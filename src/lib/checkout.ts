@@ -52,6 +52,7 @@ function parseApiError(err: Record<string, unknown>): string {
 export function buildCheckoutBody(
   checkout: CheckoutData,
   items: CartItem[],
+  discountCode?: string | null,
 ): CheckoutBody {
   return {
     items: items.map((item) => ({
@@ -78,6 +79,7 @@ export function buildCheckoutBody(
         ? { postal_code: checkout.shipping.postal_code.trim() }
         : {}),
     },
+    ...(discountCode ? { discountCode } : {}),
   };
 }
 

@@ -23,9 +23,15 @@ const inputClass =
 
 type CheckoutFormProps = {
   onContinue?: () => void;
+  discountCode?: string | null;
+  payableTotal?: number;
 };
 
-export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
+export default function CheckoutForm({
+  onContinue,
+  discountCode,
+  payableTotal,
+}: CheckoutFormProps) {
   const { items, total } = useCart();
   const [form, setForm] = useState<CheckoutData>(EMPTY_CHECKOUT);
   const [error, setError] = useState("");
@@ -72,7 +78,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
     setLoading(true);
 
     try {
-      const body = buildCheckoutBody(form, items);
+      const body = buildCheckoutBody(form, items, discountCode);
       const result = await createCheckout(body);
       saveOrderReference(result.externalReference);
       onContinue?.();
@@ -198,7 +204,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
         disabled={loading}
         className="flex min-h-[48px] w-full items-center justify-center rounded-full bg-bruma-deep text-sm tracking-wide text-bruma-cream transition active:bg-bruma-deep/85 disabled:opacity-60"
       >
-        {loading ? "Redirigiendo..." : `Pagar ${formatCLP(total)}`}
+        {loading ? "Redirigiendo..." : `Pagar ${formatCLP(payableTotal ?? total)}`}
       </button>
     </form>
   );

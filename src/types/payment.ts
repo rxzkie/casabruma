@@ -25,6 +25,7 @@ export type CheckoutBody = {
   items: CheckoutItem[];
   payer: CheckoutPayer;
   shipping: CheckoutShipping;
+  discountCode?: string;
 };
 
 export type CheckoutResponse = {
@@ -33,6 +34,10 @@ export type CheckoutResponse = {
   sandboxInitPoint?: string;
   externalReference: string;
   mode?: "sandbox" | "production";
+  subtotal?: number;
+  discountCode?: string | null;
+  discountAmount?: number;
+  total?: number;
 };
 
 export type PaymentCheck = {
@@ -40,6 +45,9 @@ export type PaymentCheck = {
   status: OrderStatus;
   mpStatus?: string;
   amount: number | null;
+  subtotal?: number | null;
+  discountCode?: string | null;
+  discountAmount?: number | null;
   currency: string;
   preferenceId?: string;
   mpPaymentId?: string;

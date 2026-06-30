@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { checkPayment, getOrderReference } from "@/lib/checkout";
+import { clearSavedDiscount } from "@/lib/discount";
 import { formatCLP } from "@/lib/format";
 import { getRejectionMessage } from "@/lib/mp-errors";
 import type { OrderStatus, PaymentCheck } from "@/types/payment";
@@ -58,7 +59,10 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
     }
     checkPayment(ref).then((data) => {
       setOrder(data);
-      if (data?.status === "COMPLETED") clearCart();
+      if (data?.status === "COMPLETED") {
+        clearCart();
+        clearSavedDiscount();
+      }
       setLoading(false);
     });
   }, [ref, clearCart]);
@@ -94,6 +98,16 @@ function PaymentResultInner({ variant }: { variant: Variant }) {
           <p className="mt-2 text-sm text-bruma-deep">
             Orden: {order.externalReference}
           </p>
+          {order.subtotal != null && order.discountAmount != null && order.discountAmount > 0 && (
+            <>
+              <p className="mt-1 text-sm text-bruma-deep/70">
+                Subtotal: {formatCLP(order.subtotal)}
+              </p>
+              <p className="mt-1 text-sm text-emerald-700">
+                Descuento ({order.discountCode}): -{formatCLP(order.discountAmount)}
+              </p>
+            </>
+          )}
           {order.amount != null && (
             <p className="mt-1 text-sm text-bruma-deep">
               Monto: {formatCLP(order.amount)}

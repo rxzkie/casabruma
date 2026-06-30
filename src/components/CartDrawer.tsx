@@ -2,9 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import CheckoutForm from "@/components/CheckoutForm";
 import { formatCLP } from "@/lib/format";
+import {
+  calcDiscountAmount,
+  calcDiscountedTotal,
+  clearSavedDiscount,
+  getSavedDiscount,
+  saveDiscount,
+  validateDiscountCode,
+  type DiscountInfo,
+} from "@/lib/discount";
 
 export default function CartDrawer() {
   const {
@@ -16,6 +26,55 @@ export default function CartDrawer() {
     removeItem,
     updateQuantity,
   } = useCart();
+
+  const [discount, setDiscount] = useState<DiscountInfo | null>(null);
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountError, setDiscountError] = useState("");
+  const [discountLoading, setDiscountLoading] = useState(false);
+
+  useEffect(() => {
+    const saved = getSavedDiscount();
+    if (saved) {
+      setDiscount(saved);
+      setDiscountInput(saved.code);
+    }
+  }, []);
+
+  const discountAmount = useMemo(
+    () => (discount ? calcDiscountAmount(total, discount.percent) : 0),
+    [discount, total],
+  );
+
+  const payableTotal = useMemo(
+    () => (discount ? calcDiscountedTotal(total, discount.percent) : total),
+    [discount, total],
+  );
+
+  async function handleApplyDiscount() {
+    setDiscountError("");
+    setDiscountLoading(true);
+    try {
+      const validated = await validateDiscountCode(discountInput);
+      setDiscount(validated);
+      saveDiscount(validated);
+      setDiscountInput(validated.code);
+    } catch (err) {
+      setDiscount(null);
+      clearSavedDiscount();
+      setDiscountError(
+        err instanceof Error ? err.message : "Codigo invalido",
+      );
+    } finally {
+      setDiscountLoading(false);
+    }
+  }
+
+  function handleRemoveDiscount() {
+    setDiscount(null);
+    setDiscountInput("");
+    setDiscountError("");
+    clearSavedDiscount();
+  }
 
   if (!isOpen) return null;
 
@@ -137,13 +196,70 @@ export default function CartDrawer() {
               </ul>
 
               <div className="mt-4 border-t border-bruma-sand/60 pt-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-sm text-bruma-deep/60">Total</span>
-                  <span className="text-xl font-medium text-bruma-deep">
-                    {formatCLP(total)}
-                  </span>
+                <p className="mb-2 text-xs uppercase tracking-widest text-bruma-mist">
+                  Codigo de descuento
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={discountInput}
+                    onChange={(e) =>
+                      setDiscountInput(e.target.value.toUpperCase())
+                    }
+                    placeholder="BRUMA10"
+                    className="w-full rounded-xl border border-bruma-sand bg-white px-3 py-2.5 text-sm text-bruma-deep outline-none transition focus:border-bruma-rose"
+                  />
+                  {discount ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveDiscount}
+                      className="shrink-0 rounded-xl border border-bruma-sand px-3 text-xs text-bruma-deep"
+                    >
+                      Quitar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleApplyDiscount}
+                      disabled={discountLoading || !discountInput.trim()}
+                      className="shrink-0 rounded-xl bg-bruma-deep px-3 text-xs text-bruma-cream disabled:opacity-50"
+                    >
+                      {discountLoading ? "..." : "Aplicar"}
+                    </button>
+                  )}
                 </div>
-                <CheckoutForm onContinue={closeCart} />
+                {discount && (
+                  <p className="mt-2 text-xs text-emerald-600">
+                    {discount.code} aplicado ({discount.percent}% off)
+                  </p>
+                )}
+                {discountError && (
+                  <p className="mt-2 text-xs text-red-500">{discountError}</p>
+                )}
+
+                <div className="mb-4 mt-4 space-y-1">
+                  <div className="flex items-center justify-between text-sm text-bruma-deep/60">
+                    <span>Subtotal</span>
+                    <span>{formatCLP(total)}</span>
+                  </div>
+                  {discount && discountAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm text-emerald-700">
+                      <span>Descuento ({discount.code})</span>
+                      <span>-{formatCLP(discountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-sm text-bruma-deep/60">Total</span>
+                    <span className="text-xl font-medium text-bruma-deep">
+                      {formatCLP(payableTotal)}
+                    </span>
+                  </div>
+                </div>
+                <CheckoutForm
+                  onContinue={closeCart}
+                  discountCode={discount?.code ?? null}
+                  payableTotal={payableTotal}
+                />
               </div>
             </div>
           </div>
