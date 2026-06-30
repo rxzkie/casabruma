@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { API_URL } from "@/lib/config";
-import { getProductImageUrl, parseProductOptions } from "@/lib/product";
+import { getProductImageUrl } from "@/lib/product";
 import type { ApiProduct, ProductOptionGroup } from "@/types/product";
 
 type ProductPurchaseProps = {
   product: ApiProduct;
+  initialOptions: ProductOptionGroup[];
 };
 
 function defaultSelections(groups: ProductOptionGroup[]) {
@@ -30,51 +30,16 @@ function formatVariant(
     .join(" · ");
 }
 
-export default function ProductPurchase({ product }: ProductPurchaseProps) {
+export default function ProductPurchase({
+  product,
+  initialOptions,
+}: ProductPurchaseProps) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
-  const [groups, setGroups] = useState<ProductOptionGroup[]>(() =>
-    parseProductOptions(product.options),
+  const groups = initialOptions;
+  const [selected, setSelected] = useState<Record<string, string>>(() =>
+    groups.length ? defaultSelections(groups) : {},
   );
-  const [selected, setSelected] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadOptions() {
-      const fromProps = parseProductOptions(product.options);
-      if (fromProps.length) {
-        setGroups(fromProps);
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `${API_URL}/products/slug/${encodeURIComponent(product.slug)}`,
-          { cache: "no-store" },
-        );
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as ApiProduct;
-        const fromApi = parseProductOptions(data.options);
-        if (!cancelled && fromApi.length) setGroups(fromApi);
-      } catch {
-        return;
-      }
-    }
-
-    void loadOptions();
-    return () => {
-      cancelled = true;
-    };
-  }, [product.slug, product.options]);
-
-  useEffect(() => {
-    if (!groups.length) {
-      setSelected({});
-      return;
-    }
-    setSelected(defaultSelections(groups));
-  }, [groups]);
 
   const variantLabel = useMemo(
     () => (groups.length ? formatVariant(groups, selected) : undefined),
@@ -111,9 +76,9 @@ export default function ProductPurchase({ product }: ProductPurchaseProps) {
     <>
       {groups.map((group) => (
         <div key={group.id} className="mt-5">
-          <p className="text-sm text-bruma-deep/70">
+          <p className="text-sm font-medium text-bruma-deep/80">
             {group.label}:{" "}
-            <span className="font-medium text-bruma-deep">
+            <span className="text-bruma-deep">
               {
                 group.choices.find((choice) => choice.value === selected[group.id])
                   ?.label
@@ -159,7 +124,7 @@ export default function ProductPurchase({ product }: ProductPurchaseProps) {
                       [group.id]: choice.value,
                     }))
                   }
-                  className={`min-h-[44px] min-w-[72px] rounded-lg border px-5 text-sm font-medium transition ${
+                  className={`min-h-[44px] min-w-[80px] rounded-lg border px-5 text-sm font-medium transition ${
                     active
                       ? "border-bruma-deep bg-bruma-deep text-bruma-cream"
                       : "border-bruma-sand bg-white text-bruma-deep hover:border-bruma-deep/30"

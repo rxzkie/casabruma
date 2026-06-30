@@ -1,4 +1,5 @@
 import type { ApiProduct, ProductOptionGroup } from "@/types/product";
+import { getFallbackOptions } from "./product-options-fallback";
 
 export function parseProductOptions(raw: unknown): ProductOptionGroup[] {
   if (!raw) return [];
@@ -39,14 +40,20 @@ export function getProductImages(product: ApiProduct): string[] {
   return main ? [main] : [];
 }
 
+export function resolveProductOptions(product: ApiProduct): ProductOptionGroup[] {
+  const parsed = parseProductOptions(product.options);
+  if (parsed.length) return parsed;
+  return getFallbackOptions(product.slug);
+}
+
 export function normalizeProduct(product: ApiProduct): ApiProduct {
   const images = getProductImages(product);
   const image_url = getProductImageUrl(product) ?? images[0] ?? "";
-  const options = parseProductOptions(product.options);
+  const options = resolveProductOptions(product);
   return {
     ...product,
     image_url,
     images,
-    options: options.length ? options : product.options ?? null,
+    options: options.length ? options : null,
   };
 }

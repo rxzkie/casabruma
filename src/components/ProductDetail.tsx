@@ -1,7 +1,7 @@
 import ProductGallery from "@/components/ProductGallery";
 import ProductPurchase from "@/components/ProductPurchase";
 import { formatCLP } from "@/lib/format";
-import { getProductImages } from "@/lib/product";
+import { getProductImages, resolveProductOptions } from "@/lib/product";
 import type { ApiProduct } from "@/types/product";
 
 type ProductDetailProps = {
@@ -10,6 +10,7 @@ type ProductDetailProps = {
 
 export default function ProductDetail({ product }: ProductDetailProps) {
   const discount = product.discount_percentage;
+  const optionGroups = resolveProductOptions(product);
 
   return (
     <div className="mx-auto max-w-3xl pb-6 sm:pb-10">
@@ -46,7 +47,10 @@ export default function ProductDetail({ product }: ProductDetailProps) {
         <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-bruma-deep/65 sm:text-base">
           {product.description}
         </p>
-        <ProductPurchase product={product} />
+        <ProductPurchase
+          product={product}
+          initialOptions={optionGroups}
+        />
         <div className="mt-8 rounded-xl border border-bruma-sand/80 bg-white p-4 sm:rounded-2xl sm:p-6">
           <p className="text-xs uppercase tracking-widest text-bruma-mist">
             Envío
