@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "res.cloudinary.com",
       },
+      {
+        protocol: "https",
+        hostname: "casabruma-phi.vercel.app",
+      },
+      {
+        protocol: "https",
+        hostname: "casabrumabackend1.onrender.com",
+      },
     ],
   },
 };
