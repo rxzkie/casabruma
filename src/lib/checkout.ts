@@ -1,5 +1,4 @@
-import { API_URL, IS_MP_SANDBOX, MP_PUBLIC_KEY } from "@/lib/config";
-import { openMpCheckout } from "@/lib/mp-sdk";
+import { API_URL } from "@/lib/config";
 import type { CartItem } from "@/types/cart";
 import type {
   CheckoutBody,
@@ -88,34 +87,35 @@ export function getOrderReference(): string | null {
 }
 
 export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  const url = IS_MP_SANDBOX ? data.sandboxInitPoint : data.initPoint;
-  if (!url?.trim()) {
+  const sandbox = data.mode === "sandbox";
+  const primary = sandbox ? data.sandboxInitPoint : data.initPoint;
+  const fallback = sandbox ? data.initPoint : data.sandboxInitPoint;
+  const url = primary?.trim() || fallback?.trim();
+
+  if (!url) {
     throw new Error("Mercado Pago no devolvió URL de checkout");
   }
-  const trimmed = url.trim();
-  if (
-    trimmed.toLowerCase().includes("mercadolibre.com") &&
-    trimmed.toLowerCase().includes("login")
-  ) {
+
+  const lower = url.toLowerCase();
+  if (lower.includes("mercadolibre.com") && lower.includes("login")) {
     throw new Error(
-      "Mercado Pago devolvió login. Configura Checkout Pro y credenciales APP_USR en Render.",
+      "Mercado Pago devolvió login. Revisa credenciales APP_USR en Render.",
     );
   }
-  if (!trimmed.toLowerCase().includes("mercadopago")) {
+  if (!lower.includes("mercadopago")) {
     throw new Error("URL de checkout inválida");
   }
-  return trimmed;
+  if (!sandbox && lower.includes("sandbox.mercadopago")) {
+    throw new Error(
+      "URL sandbox en modo producción. Verifica MP_ACCESS_TOKEN en Render.",
+    );
+  }
+
+  console.info("[MP checkout] redirect:", url, "| mode:", data.mode ?? "unknown");
+  return url;
 }
 
-export async function redirectToMpCheckout(data: CheckoutResponse) {
-  if (MP_PUBLIC_KEY && data.preferenceId) {
-    try {
-      await openMpCheckout(data.preferenceId, MP_PUBLIC_KEY);
-      return;
-    } catch (err) {
-      console.warn("[MP checkout] SDK fallo, usando redirect:", err);
-    }
-  }
+export function redirectToMpCheckout(data: CheckoutResponse) {
   window.location.href = resolveCheckoutUrl(data);
 }
 

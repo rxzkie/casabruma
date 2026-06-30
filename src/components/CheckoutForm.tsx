@@ -76,7 +76,7 @@ export default function CheckoutForm({ onContinue }: CheckoutFormProps) {
       const result = await createCheckout(body);
       saveOrderReference(result.externalReference);
       onContinue?.();
-      await redirectToMpCheckout(result);
+      redirectToMpCheckout(result);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error al iniciar el pago",
