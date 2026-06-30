@@ -81,54 +81,20 @@ export function buildCheckoutBody(
   };
 }
 
-function isLoginUrl(url: string) {
-  const lower = url.toLowerCase();
-  if (lower.includes("mercadolibre")) return true;
-  if (lower.includes("/lgz/") || lower.includes("/msl/login")) return true;
-  return false;
-}
-
-function isValidCheckoutRedirectUrl(url: string) {
-  if (!url || isLoginUrl(url)) return false;
-  const lower = url.toLowerCase();
-  return (
-    lower.includes("mercadopago.cl/checkout") ||
-    lower.includes("sandbox.mercadopago.cl/checkout")
-  );
-}
-
-function buildFallbackCheckoutUrl(data: CheckoutResponse) {
-  if (!data.preferenceId) {
-    throw new Error("Mercado Pago no devolvió preferenceId");
-  }
-  const base =
-    data.mode === "sandbox"
-      ? "https://sandbox.mercadopago.cl/checkout/v1/redirect"
-      : "https://www.mercadopago.cl/checkout/v1/redirect";
-  return `${base}?pref_id=${data.preferenceId}`;
+export function getOrderReference(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ORDER_KEY);
 }
 
 export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  const candidates = [
-    data.checkoutUrl,
-    data.mode === "sandbox" ? data.sandboxInitPoint : data.initPoint,
-    data.mode === "sandbox" ? data.initPoint : data.sandboxInitPoint,
-  ].filter((url): url is string => Boolean(url?.trim()));
-
-  for (const url of candidates) {
-    const trimmed = url.trim();
-    if (isValidCheckoutRedirectUrl(trimmed)) {
-      console.info("[MP checkout] URL valida:", trimmed);
-      return trimmed;
-    }
-    if (isLoginUrl(trimmed)) {
-      console.warn("[MP checkout] URL de login rechazada:", trimmed);
-    }
+  const sandbox = data.sandboxInitPoint?.includes("sandbox.mercadopago");
+  if (sandbox && data.sandboxInitPoint?.trim()) {
+    return data.sandboxInitPoint.trim();
   }
-
-  const fallback = buildFallbackCheckoutUrl(data);
-  console.info("[MP checkout] usando fallback:", fallback, data);
-  return fallback;
+  if (data.initPoint?.trim()) {
+    return data.initPoint.trim();
+  }
+  throw new Error("Mercado Pago no devolvió URL de checkout");
 }
 
 export async function createCheckout(

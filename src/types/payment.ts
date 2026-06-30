@@ -31,9 +31,7 @@ export type CheckoutResponse = {
   preferenceId: string;
   initPoint?: string;
   sandboxInitPoint?: string;
-  checkoutUrl: string;
   externalReference: string;
-  mode?: "sandbox" | "production";
 };
 
 export type PaymentCheck = {

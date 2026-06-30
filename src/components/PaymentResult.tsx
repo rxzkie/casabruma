@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { checkPayment } from "@/lib/checkout";
+import { checkPayment, getOrderReference } from "@/lib/checkout";
 import { formatCLP } from "@/lib/format";
 import { getRejectionMessage } from "@/lib/mp-errors";
 import type { OrderStatus, PaymentCheck } from "@/types/payment";
@@ -46,7 +46,7 @@ function variantFromStatus(status: OrderStatus): Variant {
 
 function PaymentResultInner({ variant }: { variant: Variant }) {
   const searchParams = useSearchParams();
-  const ref = searchParams.get("ref");
+  const ref = searchParams.get("ref") || getOrderReference();
   const { clearCart } = useCart();
   const [order, setOrder] = useState<PaymentCheck | null>(null);
   const [loading, setLoading] = useState(true);
