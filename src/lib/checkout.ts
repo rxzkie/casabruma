@@ -87,12 +87,17 @@ export function getOrderReference(): string | null {
 }
 
 export function resolveCheckoutUrl(data: CheckoutResponse): string {
-  const sandbox = data.sandboxInitPoint?.includes("sandbox.mercadopago");
-  if (sandbox && data.sandboxInitPoint?.trim()) {
+  if (data.mode === "production" && data.initPoint?.trim()) {
+    return data.initPoint.trim();
+  }
+  if (data.mode === "sandbox" && data.sandboxInitPoint?.trim()) {
     return data.sandboxInitPoint.trim();
   }
   if (data.initPoint?.trim()) {
     return data.initPoint.trim();
+  }
+  if (data.sandboxInitPoint?.trim()) {
+    return data.sandboxInitPoint.trim();
   }
   throw new Error("Mercado Pago no devolvió URL de checkout");
 }
