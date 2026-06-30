@@ -56,8 +56,9 @@ export function buildCheckoutBody(
 ): CheckoutBody {
   return {
     items: items.map((item) => ({
-      productId: item.id,
+      productId: item.productId ?? item.id,
       quantity: item.quantity,
+      ...(item.variant ? { variant: item.variant } : {}),
     })),
     payer: {
       name: checkout.payer.name.trim(),

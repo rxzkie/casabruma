@@ -1,3 +1,16 @@
+export type ProductOptionChoice = {
+  value: string;
+  label: string;
+  image?: string;
+};
+
+export type ProductOptionGroup = {
+  id: string;
+  label: string;
+  type: "button" | "color";
+  choices: ProductOptionChoice[];
+};
+
 export type ApiProduct = {
   id: string;
   name: string;
@@ -9,6 +22,7 @@ export type ApiProduct = {
   stock: number;
   image_url: string;
   images: string[];
+  options?: ProductOptionGroup[] | null;
   tag?: string;
   description: string;
   is_active: boolean;

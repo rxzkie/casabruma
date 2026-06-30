@@ -1,6 +1,5 @@
-import Link from "next/link";
-import AddToCartButton from "@/components/AddToCartButton";
 import ProductGallery from "@/components/ProductGallery";
+import ProductPurchase from "@/components/ProductPurchase";
 import { formatCLP } from "@/lib/format";
 import { getProductImages } from "@/lib/product";
 import type { ApiProduct } from "@/types/product";
@@ -47,23 +46,7 @@ export default function ProductDetail({ product }: ProductDetailProps) {
         <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-bruma-deep/65 sm:text-base">
           {product.description}
         </p>
-        {product.stock === 0 ? (
-          <div className="mt-6 flex min-h-[48px] items-center justify-center rounded-full bg-bruma-sand/50 text-sm tracking-wide text-bruma-deep/50">
-            Producto agotado
-          </div>
-        ) : (
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <AddToCartButton product={product} />
-            <Link
-              href={`https://wa.me/56900000000?text=${encodeURIComponent(`Hola! Quiero pedir: ${product.name}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-[48px] flex-1 items-center justify-center rounded-full border border-bruma-deep/20 text-sm tracking-wide text-bruma-deep transition active:border-bruma-rose active:text-bruma-rose"
-            >
-              Pedir por WhatsApp
-            </Link>
-          </div>
-        )}
+        <ProductPurchase product={product} />
         <div className="mt-8 rounded-xl border border-bruma-sand/80 bg-white p-4 sm:rounded-2xl sm:p-6">
           <p className="text-xs uppercase tracking-widest text-bruma-mist">
             Envío

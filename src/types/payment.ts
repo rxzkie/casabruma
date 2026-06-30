@@ -3,6 +3,7 @@ export type OrderStatus = "COMPLETED" | "PENDING" | "FAILED";
 export type CheckoutItem = {
   productId: string;
   quantity: number;
+  variant?: string;
 };
 
 export type CheckoutPayer = {

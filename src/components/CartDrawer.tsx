@@ -152,6 +152,11 @@ export default function CartDrawer() {
                       >
                         {item.name}
                       </Link>
+                      {item.variant ? (
+                        <p className="mt-0.5 text-xs text-bruma-deep/50">
+                          {item.variant}
+                        </p>
+                      ) : null}
                       <p className="mt-1 text-sm text-bruma-rose">
                         {formatCLP(item.price)}
                       </p>

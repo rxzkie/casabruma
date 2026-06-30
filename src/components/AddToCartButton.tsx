@@ -17,6 +17,7 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
     const image = getProductImageUrl(product);
     addItem({
       id: product.id,
+      productId: product.id,
       slug: product.slug,
       name: product.name,
       price: parseInt(product.price, 10),
